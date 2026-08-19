@@ -91,6 +91,9 @@ button { touch-action: manipulation; cursor: pointer; }
 .optRow { display: flex; justify-content: space-between; align-items: center; font-size: 18px; padding: 4px 4px; }
 .optRow select { font-size: 16px; padding: 6px 8px; border-radius: 10px; border: 1px solid #bbb; background: #fff; }
 .optRow input[type=checkbox] { width: 22px; height: 22px; }
+.optRow.small { font-size: 14px; color: #555; }
+.optRow.small .ok { color: #2e8b3d; } .optRow.small .warn { color: #b0651a; }
+.optRow.small:empty { display: none; }
 .rules { font-size: 15px; line-height: 1.5; color: #222; margin: 6px 0 14px; }
 .rules p { margin-bottom: 8px; }
 .rules table { border-collapse: collapse; margin: 6px 0 10px; width: 100%; font-variant-numeric: tabular-nums; }
@@ -161,6 +164,7 @@ button { touch-action: manipulation; cursor: pointer; }
       <div id="stats"></div>
       <div class="optRow"><span id="lblSpeed"></span><select id="selSpeed"><option value="normal"></option><option value="fast"></option><option value="instant"></option></select></div>
       <div class="optRow"><span id="lblNum"></span><input type="checkbox" id="chkNum"></div>
+      <div class="optRow small" id="storageInfo"></div>
     </div>
   </div>
 </div>
@@ -1270,6 +1274,7 @@ button { touch-action: manipulation; cursor: pointer; }
       starveMsg: 'Una tua provincia non ha potuto pagare i salari: i soldati sono morti.', capitalLostMsg: 'Capitale persa: {0} oro andati perduti.',
       unitLostMsg: 'Hai perso {0} unità.', hexesLostMsg: 'Hai perso {0} {1}.', hexOne: 'esagono', hexMany: 'esagoni', elimMsg: '{0} è stato eliminato.',
       eliminated: 'eliminato', lvl: 'liv.', notEnough: 'Oro insufficiente', farmRule: 'accanto a capitale o fattoria',
+      storage: 'Archiviazione dati', storagePersistent: 'permanente', storageBestEffort: 'non garantita dal browser',
     },
     en: {
       start: 'Start', resume: 'Resume', newGame: 'New game', rules: 'Rules', close: 'Close', undo: 'Undo', endTurn: 'End turn',
@@ -1285,6 +1290,7 @@ button { touch-action: manipulation; cursor: pointer; }
       starveMsg: 'One of your provinces could not pay its wages: the soldiers died.', capitalLostMsg: 'Capital lost: {0} gold gone.',
       unitLostMsg: 'You lost {0} unit(s).', hexesLostMsg: 'You lost {0} {1}.', hexOne: 'hex', hexMany: 'hexes', elimMsg: '{0} has been eliminated.',
       eliminated: 'eliminated', lvl: 'lv.', notEnough: 'Not enough gold', farmRule: 'next to a capital or a farm',
+      storage: 'Data storage', storagePersistent: 'persistent', storageBestEffort: 'not guaranteed by the browser',
     },
   };
   const RULES = {
@@ -2125,6 +2131,7 @@ ${R.farms ? '<p><b>Farms.</b> Must be built next to the capital or another farm;
     }
     $('stats').innerHTML = sh;
     $('selSpeed').value = prefs.speed; $('chkNum').checked = !!prefs.showNum;
+    updateStorageInfo();
     $('ovSetup').classList.add('hidden'); $('ovMenu').classList.remove('hidden');
   }
   function hideScreens() {
@@ -2288,12 +2295,30 @@ ${R.farms ? '<p><b>Farms.</b> Must be built next to the capital or another farm;
   $('selSpeed').addEventListener('change', () => { prefs.speed = $('selSpeed').value; savePrefs(); });
   $('chkNum').addEventListener('change', () => { prefs.showNum = $('chkNum').checked; savePrefs(); requestRender(); });
 
+  /* ---------------- persistent storage (ask the browser not to evict our data) ---------------- */
+  let persisted = null;   // null = unknown/unsupported, true/false otherwise
+  async function requestPersistence() {
+    try {
+      if (!navigator.storage) return;
+      if (navigator.storage.persisted) persisted = await navigator.storage.persisted();
+      if (!persisted && navigator.storage.persist) persisted = await navigator.storage.persist();
+    } catch (e) { /* ignore */ }
+    updateStorageInfo();
+  }
+  function updateStorageInfo() {
+    const el = $('storageInfo'); if (!el) return;
+    if (persisted === null) { el.textContent = ''; return; }
+    el.innerHTML = `<span>${t('storage')}</span><span class="${persisted ? 'ok' : 'warn'}">${persisted ? t('storagePersistent') : t('storageBestEffort')}</span>`;
+  }
+
   /* ---------------- boot ---------------- */
   loadPrefs();
   applyStaticTexts();
   layout();
   if (loadGame()) showMenu(); else showSetup();
   requestAnimationFrame(frame);
+  requestPersistence();
+  window.addEventListener('pointerdown', function once() { window.removeEventListener('pointerdown', once); if (!persisted) requestPersistence(); }, { once: true });
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { try { navigator.serviceWorker.register('sw.js').catch(() => { }); } catch (e) { } }
 
   // testing hooks
