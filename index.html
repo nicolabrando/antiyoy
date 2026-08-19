@@ -1,0 +1,2311 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Antiyoy">
+<meta name="theme-color" content="#2f7ee2">
+<title>Antiyoy</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; width: 100%; overflow: hidden; background: #2f7ee2; color: #1a1a1a; font-family: 'Ubuntu', 'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; }
+button, select, input { font: inherit; }
+button { touch-action: manipulation; cursor: pointer; }
+.hidden { display: none !important; }
+
+#app { position: fixed; inset: 0; }
+#map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#hud { position: absolute; inset: 0; pointer-events: none; }
+#hud > * { pointer-events: auto; }
+.outlined { text-shadow: 0 0 3px #000, 0 0 3px #000, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; }
+
+/* top: money & income of the selected province */
+#topLeft { position: absolute; left: 12px; top: calc(10px + env(safe-area-inset-top)); display: flex; align-items: center; gap: 6px; color: #fff; font-size: 30px; font-weight: 500; text-shadow: 0 0 3px #000, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; pointer-events: none; }
+#topLeft .coin { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #f5c542; color: #6b4a00; font-size: 20px; font-weight: 700; text-shadow: none; box-shadow: inset 0 0 0 3px #f9de7c, 0 1px 3px rgba(0,0,0,0.5); }
+#topCenter { position: absolute; left: 50%; top: calc(10px + env(safe-area-inset-top)); transform: translateX(-50%); color: #fff; font-size: 30px; font-weight: 500; text-shadow: 0 0 3px #000, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; pointer-events: none; }
+#topCenter.neg { color: #ff8b7a; }
+#banner { position: absolute; left: 50%; top: calc(56px + env(safe-area-inset-top)); transform: translateX(-50%); color: #fff; font-size: 14px; text-shadow: 0 0 3px #000, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; pointer-events: none; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+#banner .dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #111; }
+#toast { position: absolute; left: 50%; top: calc(96px + env(safe-area-inset-top)); transform: translateX(-50%); background: rgba(20,24,30,0.85); color: #fff; border-radius: 10px; padding: 8px 14px; font-size: 14px; line-height: 1.4; pointer-events: none; max-width: 92vw; text-align: center; transition: opacity .3s; white-space: pre-line; }
+#toast.fade { opacity: 0; }
+#infoLbl { position: absolute; left: 50%; bottom: calc(74px + env(safe-area-inset-bottom)); transform: translateX(-50%); color: #fff; font-size: 14px; text-shadow: 0 0 3px #000, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; pointer-events: none; white-space: nowrap; max-width: 94vw; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+#infoLbl .dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #111; }
+
+/* hud buttons (flat white icons, like the original) */
+.hb { position: absolute; width: 56px; height: 56px; border: none; background: transparent; padding: 8px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.6)) drop-shadow(0 0 2px rgba(0,0,0,0.5)); }
+.hb svg { width: 100%; height: 100%; }
+.hb:disabled { opacity: 0.3; }
+#btnMenu { right: 6px; top: calc(4px + env(safe-area-inset-top)); }
+#btnMenu .dots { display: flex; flex-direction: column; gap: 5px; align-items: center; justify-content: center; height: 100%; }
+#btnMenu .dots i { width: 8px; height: 8px; border-radius: 50%; background: #fff; display: block; }
+#btnUndo { left: 6px; bottom: calc(6px + env(safe-area-inset-bottom)); }
+#btnEnd { right: 6px; bottom: calc(6px + env(safe-area-inset-bottom)); }
+#btnEnd.attention svg path, #btnEnd.attention svg rect { fill: #ffd54a; }
+
+/* build bar */
+#buildBar { position: absolute; left: 50%; bottom: calc(6px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 4px; }
+.bb { width: 58px; height: 58px; border: none; background: transparent; padding: 4px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5)); }
+.bb img { width: 100%; height: 100%; }
+.bb.active { background: rgba(255,255,255,0.22); border-radius: 12px; }
+#priceLbl { color: #fff; font-size: 26px; font-weight: 500; min-width: 64px; text-align: center; text-shadow: 0 0 3px #000, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; }
+#priceLbl.no { color: #ff8b7a; }
+#ghost { position: absolute; left: 50%; bottom: calc(66px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; pointer-events: auto; }
+#ghost img { width: 54px; height: 54px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5)); }
+#ghost span { color: #fff; font-size: 12px; text-shadow: 0 0 3px #000, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; }
+
+/* screens (menu / setup / rules): mint background with bubbles */
+.screen { position: fixed; inset: 0; z-index: 10; overflow-y: auto; background-color: #8fe4d2; background-image: radial-gradient(circle at 12% 18%, rgba(70,100,150,0.35) 0 22px, transparent 23px), radial-gradient(circle at 78% 12%, rgba(70,100,150,0.3) 0 16px, transparent 17px), radial-gradient(circle at 88% 44%, rgba(70,100,150,0.32) 0 26px, transparent 27px), radial-gradient(circle at 20% 60%, rgba(70,100,150,0.3) 0 14px, transparent 15px), radial-gradient(circle at 60% 78%, rgba(70,100,150,0.32) 0 24px, transparent 25px), radial-gradient(circle at 30% 92%, rgba(70,100,150,0.3) 0 18px, transparent 19px), radial-gradient(circle at 92% 86%, rgba(70,100,150,0.3) 0 12px, transparent 13px); padding: calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); }
+.topBtns { display: flex; justify-content: space-between; max-width: 520px; margin: 0 auto 26px; gap: 12px; }
+.pill { flex: 1; height: 62px; border: none; border-radius: 16px; font-size: 26px; font-weight: 400; color: #1a1a1a; box-shadow: 0 3px 0 rgba(0,0,0,0.12), 0 6px 14px rgba(0,0,0,0.12); }
+.pill.back { background: #f7c948; max-width: 220px; }
+.pill.start { background: #7ee36a; max-width: 220px; margin-left: auto; }
+.cards { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.cards.narrow { max-width: 420px; }
+.card { background: #f7f7f7; border-radius: 22px; padding: 22px 26px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+.title { text-align: center; font-size: 42px; font-weight: 400; letter-spacing: 1px; color: #123; margin: 10px 0 4px; }
+.slider { padding: 10px 0 14px; }
+.slider .lbl { display: flex; justify-content: space-between; align-items: baseline; font-size: 26px; font-weight: 400; color: #1a1a1a; }
+.slider .lbl .val { font-size: 22px; color: #333; }
+.slider .track { position: relative; height: 26px; margin-top: 4px; }
+.slider .track::before { content: ''; position: absolute; left: 0; right: 0; top: 12px; height: 2px; background: #1a1a1a; }
+.slider .dot { position: absolute; top: 9px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #1a1a1a; cursor: pointer; }
+.slider .dot::after { content: ''; position: absolute; inset: -14px; }
+.slider .dot.sel { width: 22px; height: 22px; top: 2px; margin-left: -11px; }
+.seedRow { display: flex; justify-content: space-between; align-items: center; font-size: 22px; padding: 6px 0; }
+.seedRow input { width: 150px; font-size: 18px; padding: 8px 10px; border-radius: 10px; border: 1px solid #bbb; background: #fff; }
+.menuCard { display: flex; flex-direction: column; gap: 12px; }
+.mbtn { width: 100%; height: 56px; border: none; border-radius: 14px; background: #e9e9e9; color: #1a1a1a; font-size: 22px; box-shadow: 0 3px 0 rgba(0,0,0,0.08); }
+.mbtn.primary { background: #7ee36a; }
+.mbtn:disabled { opacity: 0.35; }
+#stats { display: flex; flex-direction: column; gap: 4px; padding: 6px 4px; font-size: 16px; }
+#stats .row { display: flex; align-items: center; gap: 8px; }
+#stats .row .dot { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,0.35); }
+#stats .row.dead { opacity: 0.4; text-decoration: line-through; }
+#stats .row.cur { font-weight: 700; }
+#stats .row .n { margin-left: auto; font-variant-numeric: tabular-nums; }
+.optRow { display: flex; justify-content: space-between; align-items: center; font-size: 18px; padding: 4px 4px; }
+.optRow select { font-size: 16px; padding: 6px 8px; border-radius: 10px; border: 1px solid #bbb; background: #fff; }
+.optRow input[type=checkbox] { width: 22px; height: 22px; }
+.rules { font-size: 15px; line-height: 1.5; color: #222; margin: 6px 0 14px; }
+.rules p { margin-bottom: 8px; }
+.rules table { border-collapse: collapse; margin: 6px 0 10px; width: 100%; font-variant-numeric: tabular-nums; }
+.rules th, .rules td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; }
+.rules th { font-weight: 600; }
+.card h2 { font-size: 26px; font-weight: 400; margin-bottom: 8px; }
+.overlay { position: fixed; inset: 0; background: rgba(15, 25, 40, 0.55); display: flex; align-items: center; justify-content: center; z-index: 11; padding: 12px; }
+.endCard { width: min(400px, 100%); display: flex; flex-direction: column; gap: 10px; }
+.endCard p { font-size: 18px; color: #333; margin-bottom: 6px; }
+
+@media (max-width: 380px) {
+  .slider .lbl { font-size: 22px; } .slider .lbl .val { font-size: 18px; }
+  .pill { font-size: 22px; height: 54px; }
+  #topLeft, #topCenter { font-size: 26px; }
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="map"></canvas>
+  <div id="hud">
+    <div id="topLeft" class="hidden"><span class="coin">$</span><span id="moneyVal">0</span></div>
+    <div id="topCenter" class="hidden"><span id="incomeVal">+0</span></div>
+    <div id="banner" class="hidden"></div>
+    <button id="btnMenu" class="hb" title="Menu"><span class="dots"><i></i><i></i><i></i></span></button>
+    <div id="toast" class="hidden"></div>
+    <div id="infoLbl" class="hidden"></div>
+    <div id="ghost" class="hidden"><img id="ghostImg" alt=""><span id="ghostLbl"></span></div>
+    <button id="btnUndo" class="hb" title="Undo"><svg viewBox="0 0 24 24"><path d="M6.2 8.6A7 7 0 1 1 5 12" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><path d="M4.2 3.6l.4 5.6 5.6-.6" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div id="buildBar" class="hidden">
+      <button id="btnBuild" class="bb" title="Build"><img id="buildImg" alt=""></button>
+      <span id="priceLbl">$12</span>
+      <button id="btnUnit" class="bb" title="Unit"><img id="unitImg" alt=""></button>
+    </div>
+    <button id="btnEnd" class="hb" title="End turn"><svg viewBox="0 0 24 24"><path d="M5 4l10 8-10 8z" fill="#fff"/><rect x="17" y="4" width="3" height="16" fill="#fff"/></svg></button>
+  </div>
+</div>
+
+<div id="ovSetup" class="screen">
+  <div class="topBtns">
+    <button id="btnSetupBack" class="pill back">←</button>
+    <button id="btnStart" class="pill start"></button>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <div class="slider" data-key="diff"></div>
+      <div class="slider" data-key="size"></div>
+    </div>
+    <div class="card">
+      <div class="slider" data-key="players"></div>
+      <div class="slider" data-key="rules"></div>
+    </div>
+    <div class="card">
+      <div class="slider" data-key="lang"></div>
+      <label class="seedRow"><span id="lblSeed"></span><input type="text" id="optSeed" inputmode="numeric" placeholder="—"></label>
+    </div>
+  </div>
+</div>
+
+<div id="ovMenu" class="screen hidden">
+  <div class="cards narrow">
+    <h1 class="title">Antiyoy</h1>
+    <div class="card menuCard">
+      <button id="btnResume" class="mbtn primary"></button>
+      <button id="btnNew" class="mbtn"></button>
+      <button id="btnRules" class="mbtn"></button>
+      <div id="stats"></div>
+      <div class="optRow"><span id="lblSpeed"></span><select id="selSpeed"><option value="normal"></option><option value="fast"></option><option value="instant"></option></select></div>
+      <div class="optRow"><span id="lblNum"></span><input type="checkbox" id="chkNum"></div>
+    </div>
+  </div>
+</div>
+
+<div id="ovRules" class="screen hidden">
+  <div class="cards">
+    <div class="card"><h2 id="rulesTitle"></h2><div id="rulesBody" class="rules"></div><button id="btnRulesClose" class="mbtn primary"></button></div>
+  </div>
+</div>
+
+<div id="ovEnd" class="overlay hidden">
+  <div class="card endCard">
+    <h2 id="endTitle"></h2>
+    <p id="endText"></p>
+    <button id="btnEndNew" class="mbtn primary"></button>
+    <button id="btnWatch" class="mbtn"></button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Antiyoy clone — game engine (pure logic, no DOM)
+   Works both in the browser (window.SlayEngine) and in Node.
+   Rules are configurable: Antiyoy (farms, strong towers, move range 4,
+   units tired after any move) or classic Slay.
+   ============================================================ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.SlayEngine = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  const UNIT_COST = [0, 10, 20, 30, 40];
+  const UNIT_WAGE = [0, 2, 6, 18, 54];
+  const TOWER_COST = 15, STRONG_COST = 35, FARM_BASE = 12, FARM_STEP = 2, FARM_INCOME = 4;
+  const START_GOLD = 10;
+  const CASTLE_COST = TOWER_COST;   // legacy alias
+  const MAX_STRENGTH = 4;
+  const BLD = { NONE: 0, CAPITAL: 1, TOWER: 2, STRONG: 3, FARM: 4 };
+  const BLD_DEF = [0, 1, 2, 3, 0];
+  const RULESETS = {
+    antiyoy: { name: 'antiyoy', farms: true, strongTower: true, moveRange: 4, tiredAfterMove: true, slayBankruptcy: false },
+    slay: { name: 'slay', farms: false, strongTower: false, moveRange: 0, tiredAfterMove: false, slayBankruptcy: true },
+  };
+  const TREE = { NONE: 0, PINE: 1, PALM: 2, GRAVE: 3 };
+  const P_PALM = 0.1;   // chance per turn that a coastal empty hex next to a palm grows a palm
+  const P_PINE = 0.06;   // chance per turn that an empty hex with >= 2 pine neighbours grows a pine
+  const MAP_SIZES = { small: [20, 16], medium: [26, 20], large: [34, 26], huge: [46, 36] };
+  const PROVINCES_PER_PLAYER = { small: 2, medium: 3, large: 4, huge: 5 };
+  const NEUTRAL = -1;
+
+  // Edge order (pointy-top hex, screen y down): SE, SW, W, NW, NE, E
+  const DIRS_EVEN = [[0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, 0]];
+  const DIRS_ODD = [[1, 1], [0, 1], [-1, 0], [0, -1], [1, -1], [1, 0]];
+
+  /* ---------- deterministic RNG stored inside the state ---------- */
+  function rand(state) {
+    let a = ((state.rng | 0) + 0x6D2B79F5) | 0;
+    state.rng = a;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  function randInt(state, n) { return Math.floor(rand(state) * n); }
+  function shuffle(state, arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = randInt(state, i + 1);
+      const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  /* ---------- neighbours (cached per map size), -1 = out of map ---------- */
+  const nbrCache = {};
+  function neighbors(state) {
+    const key = state.cols + 'x' + state.rows;
+    if (nbrCache[key]) return nbrCache[key];
+    const { cols, rows } = state;
+    const arr = new Array(cols * rows);
+    for (let r = 0; r < rows; r++) {
+      const dirs = (r & 1) ? DIRS_ODD : DIRS_EVEN;
+      for (let c = 0; c < cols; c++) {
+        const list = new Array(6);
+        for (let k = 0; k < 6; k++) {
+          const cc = c + dirs[k][0], rr = r + dirs[k][1];
+          list[k] = (cc >= 0 && cc < cols && rr >= 0 && rr < rows) ? rr * cols + cc : -1;
+        }
+        arr[r * cols + c] = list;
+      }
+    }
+    nbrCache[key] = arr;
+    return arr;
+  }
+  function landNeighbors(state, i) {
+    const nb = neighbors(state)[i], H = state.hexes, out = [];
+    for (let k = 0; k < 6; k++) { const j = nb[k]; if (j >= 0 && H[j].land) out.push(j); }
+    return out;
+  }
+
+  /* ---------- map generation ---------- */
+  // one big landmass with bays, channels and inner lakes (Antiyoy style)
+  function generateLand(state) {
+    const { cols, rows } = state, N = cols * rows, nb = neighbors(state);
+    let land = new Uint8Array(N);
+    const cx = (cols - 1) / 2, cy = (rows - 1) / 2;
+    const rx = cols / 2 - 1.2, ry = (rows / 2 - 1.2) * 0.866;
+    const f1 = 0.3 + rand(state) * 0.35, f2 = 0.3 + rand(state) * 0.35, f3 = 0.18 + rand(state) * 0.3;
+    const p1 = rand(state) * 6.283, p2 = rand(state) * 6.283, p3 = rand(state) * 6.283;
+    for (let r = 1; r < rows - 1; r++) {
+      for (let c = 1; c < cols - 1; c++) {
+        const px = c + 0.5 * (r & 1) - cx, py = (r - cy) * 0.866;
+        let d = Math.sqrt((px / rx) * (px / rx) + (py / ry) * (py / ry));
+        d += 0.4 * (Math.sin(px * f1 + p1) * Math.sin(py * f2 + p2) + 0.5 * Math.sin((px + py) * f3 + p3));
+        const p = 1.3 - d * 0.6;
+        if (rand(state) < p) land[r * cols + c] = 1;
+      }
+    }
+    for (let it = 0; it < 2; it++) {
+      const next = new Uint8Array(N);
+      for (let i = 0; i < N; i++) {
+        const c = i % cols, r = (i / cols) | 0;
+        if (c === 0 || r === 0 || c === cols - 1 || r === rows - 1) continue;
+        let n = land[i];
+        for (let k = 0; k < 6; k++) { const j = nb[i][k]; if (j >= 0) n += land[j]; }
+        next[i] = n >= 4 ? 1 : 0;
+      }
+      land = next;
+    }
+    keepLargest(state, land);
+    // inner lakes: small clusters and short channels punched into the interior
+    const interior = [];
+    for (let i = 0; i < N; i++) {
+      if (!land[i]) continue;
+      let ok = true;
+      for (let k = 0; k < 6; k++) { const j = nb[i][k]; if (j < 0 || !land[j]) { ok = false; break; } }
+      if (ok) interior.push(i);
+    }
+    const lakes = Math.round(interior.length * 0.09);
+    for (let l = 0; l < lakes && interior.length; l++) {
+      let cur = interior[randInt(state, interior.length)];
+      const size = 1 + (rand(state) < 0.55 ? 0 : 1 + randInt(state, 3));
+      for (let k = 0; k < size; k++) {
+        land[cur] = 0;
+        const opts = [];
+        for (let d = 0; d < 6; d++) { const j = nb[cur][d]; if (j >= 0 && land[j]) opts.push(j); }
+        if (!opts.length) break;
+        cur = opts[randInt(state, opts.length)];
+      }
+    }
+    keepLargest(state, land);
+    // prune leaves (hexes with <= 1 land neighbour)
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < N; i++) {
+        if (!land[i]) continue;
+        let n = 0;
+        for (let k = 0; k < 6; k++) { const j = nb[i][k]; if (j >= 0 && land[j]) n++; }
+        if (n <= 1) land[i] = 0;
+      }
+    }
+    keepLargest(state, land);
+    return land;
+  }
+  function keepLargest(state, land) {
+    const N = land.length, nb = neighbors(state);
+    const comp = new Int32Array(N).fill(-1);
+    let best = -1, bestSize = 0, ncomp = 0;
+    for (let i = 0; i < N; i++) {
+      if (!land[i] || comp[i] >= 0) continue;
+      const stack = [i]; comp[i] = ncomp; let size = 0;
+      while (stack.length) {
+        const x = stack.pop(); size++;
+        for (let k = 0; k < 6; k++) { const j = nb[x][k]; if (j >= 0 && land[j] && comp[j] < 0) { comp[j] = ncomp; stack.push(j); } }
+      }
+      if (size > bestSize) { bestSize = size; best = ncomp; }
+      ncomp++;
+    }
+    for (let i = 0; i < N; i++) if (land[i] && comp[i] !== best) land[i] = 0;
+  }
+
+  // Everything starts neutral (grey); every player gets `perPlayer` small provinces spread over the map
+  function assignOwners(state, landIdx, P, perPlayer) {
+    const nb = neighbors(state), H = state.hexes;
+    const N = H.length;
+    for (const i of landIdx) H[i].owner = NEUTRAL;
+    const sizes = [];
+    for (let k = 0; k < perPlayer; k++) sizes.push(2 + randInt(state, 3));   // same size sequence for everybody
+    const seeds = [];
+    // hex -> distance to nearest coloured hex (approximate through BFS from all seeds' hexes)
+    const dist = new Int32Array(N).fill(1e9);
+    function bfsFrom(sources) {
+      const q = sources.slice(); for (const s0 of sources) dist[s0] = 0;
+      for (let k = 0; k < q.length; k++) {
+        const x = q[k];
+        for (let d = 0; d < 6; d++) { const j = nb[x][d]; if (j >= 0 && H[j].land && dist[j] > dist[x] + 1) { dist[j] = dist[x] + 1; q.push(j); } }
+      }
+    }
+    for (let k = 0; k < perPlayer; k++) {
+      for (let p = 0; p < P; p++) {
+        // best-candidate sampling: the free hex farthest from every coloured hex
+        let best = -1, bestD = -1;
+        for (let tries = 0; tries < 40; tries++) {
+          const i = landIdx[randInt(state, landIdx.length)];
+          if (H[i].owner !== NEUTRAL) continue;
+          const d = seeds.length ? dist[i] : 1e9;
+          if (d < 3) continue;
+          const dd = d + rand(state) * 0.5;
+          if (dd > bestD) { bestD = dd; best = i; }
+        }
+        if (best < 0) {   // crowded map: accept the farthest of a few random free hexes
+          for (let tries = 0; tries < 200 && best < 0; tries++) { const i = landIdx[randInt(state, landIdx.length)]; if (H[i].owner === NEUTRAL && dist[i] >= 2) best = i; }
+          if (best < 0) return false;
+        }
+        // grow the province
+        const prov = [best]; H[best].owner = p;
+        const target = sizes[k];
+        let guard = 0;
+        while (prov.length < target && guard++ < 50) {
+          const from = prov[randInt(state, prov.length)];
+          const opts = [];
+          for (let d = 0; d < 6; d++) {
+            const j = nb[from][d]; if (j < 0) continue;
+            const g = H[j]; if (!g.land || g.owner !== NEUTRAL) continue;
+            let okj = true;
+            for (let e = 0; e < 6; e++) { const m = nb[j][e]; if (m >= 0 && H[m].land && H[m].owner >= 0 && H[m].owner !== p) { okj = false; break; } }
+            if (okj) opts.push(j);
+          }
+          if (!opts.length) break;
+          const j = opts[randInt(state, opts.length)];
+          H[j].owner = p; prov.push(j);
+        }
+        if (prov.length < 2) { for (const i of prov) H[i].owner = NEUTRAL; return false; }
+        seeds.push(...prov);
+        bfsFrom(prov);
+      }
+    }
+    return true;
+  }
+
+  /* ---------- province names ---------- */
+  const NAME_A = ['ka', 'so', 'mi', 'ra', 've', 'lo', 'ta', 'ne', 'du', 'pa', 'gri', 'zo', 'be', 'fu', 'ki', 'ma', 'ol', 'ur', 'es', 'an', 'yo', 'tri', 'sha', 'no', 'li', 'go', 'wa', 'ce', 'ha', 'ju'];
+  const NAME_B = ['re', 'na', 'ki', 'lo', 'mo', 'va', 'ti', 'sa', 'ne', 'ru', 'do', 'pi', 'la', 'ze', 'ko', 'me', 'ga', 'ba', 'sh', 'ta', 'ri', 'nu', 'vi', 'ma'];
+  const NAME_END = ['msk', 'na', 'grad', 'ia', 'ov', 'burg', 'ta', 'no', 'via', 'ka', 'stan', 'lia', 'ro', 'th', 'is', 'um', 'ok', 'an', 'ino', 'polis'];
+  function makeName(state) {
+    let s = NAME_A[randInt(state, NAME_A.length)];
+    if (rand(state) < 0.55) s += NAME_B[randInt(state, NAME_B.length)];
+    s += NAME_END[randInt(state, NAME_END.length)];
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  /* ---------- basic accessors ---------- */
+  function strengthAt(state, i) {
+    const h = state.hexes[i];
+    let s = h.unit ? h.unit.s : 0;
+    if (h.bld) s = Math.max(s, BLD_DEF[h.bld]);
+    return s;
+  }
+  // defensive value of hex i against an attacker (own occupant + adjacent same-owner occupants)
+  function defense(state, i) {
+    const h = state.hexes[i], nb = neighbors(state)[i], H = state.hexes;
+    let d = strengthAt(state, i);
+    for (let k = 0; k < 6; k++) {
+      const j = nb[k];
+      if (j >= 0 && H[j].land && H[j].owner === h.owner) d = Math.max(d, strengthAt(state, j));
+    }
+    return d;
+  }
+  function income(state, t) {
+    let n = 0;
+    for (const i of t.hexes) { const h = state.hexes[i]; if (!h.tree) n++; if (h.bld === BLD.FARM) n += FARM_INCOME; }
+    return n;
+  }
+  function farmCount(state, t) {
+    let n = 0;
+    for (const i of t.hexes) if (state.hexes[i].bld === BLD.FARM) n++;
+    return n;
+  }
+  function farmCost(state, t) { return FARM_BASE + FARM_STEP * farmCount(state, t); }
+  function buildingCost(state, t, kind) {
+    if (kind === 'tower') return TOWER_COST;
+    if (kind === 'strong') return STRONG_COST;
+    if (kind === 'farm') return farmCost(state, t);
+    return Infinity;
+  }
+  function rulesOf(state) { return state.rules || RULESETS.antiyoy; }
+  function wages(state, t) {
+    let w = 0;
+    for (const i of t.hexes) { const u = state.hexes[i].unit; if (u) w += UNIT_WAGE[u.s]; }
+    return w;
+  }
+  function territoryAt(state, i) {
+    const h = state.hexes[i];
+    return (h && h.terr >= 0) ? state.terrs[h.terr] : null;
+  }
+  function playerTerritories(state, p) {
+    return Object.values(state.terrs).filter(t => t.owner === p);
+  }
+  function hexCount(state, p) {
+    let n = 0;
+    for (const h of state.hexes) if (h.land && h.owner === p) n++;
+    return n;
+  }
+  function pushLog(state, ev) {
+    ev.round = state.round; ev.turn = state.current;
+    state.log.push(ev);
+    if (state.log.length > 80) state.log.splice(0, state.log.length - 80);
+  }
+
+  /* ---------- territories ---------- */
+  function placeCapital(state, rec, comp) {
+    const H = state.hexes;
+    let cands = comp.filter(i => !H[i].unit && !H[i].bld && !H[i].tree);
+    let kill = false;
+    if (!cands.length) cands = comp.filter(i => !H[i].unit && !H[i].bld);           // tree/grave hex (cleared)
+    if (!cands.length) cands = comp.filter(i => !H[i].unit);                         // building hex (replaced)
+    if (!cands.length) { cands = comp.slice(); kill = true; }                         // extremely rare
+    // prefer interior hexes (fewer foreign neighbours)
+    const nb = neighbors(state);
+    let bestScore = 1e9, best = [];
+    for (const i of cands) {
+      let s = 0;
+      for (let k = 0; k < 6; k++) { const j = nb[i][k]; if (j < 0 || !H[j].land) s += 1; else if (H[j].owner !== H[i].owner) s += 2; }
+      if (kill) s += H[i].unit ? H[i].unit.s * 10 : 0;
+      if (s < bestScore) { bestScore = s; best = [i]; } else if (s === bestScore) best.push(i);
+    }
+    const i = best[randInt(state, best.length)];
+    H[i].tree = TREE.NONE; H[i].bld = BLD.CAPITAL; if (kill) H[i].unit = null;
+    rec.capital = i;
+  }
+
+  // Recompute all territories from hex ownership. Preserves gold/capitals through ids.
+  function recomputeTerritories(state) {
+    const H = state.hexes, nb = neighbors(state), old = state.terrs;
+    const visited = new Uint8Array(H.length);
+    const fresh = {};
+    for (let i = 0; i < H.length; i++) {
+      const h = H[i];
+      if (!h.land || visited[i]) continue;
+      if (h.owner < 0) { h.terr = -1; visited[i] = 1; continue; }   // neutral land
+      const comp = [i]; visited[i] = 1;
+      for (let k = 0; k < comp.length; k++) {
+        const nbs = nb[comp[k]];
+        for (let d = 0; d < 6; d++) {
+          const j = nbs[d];
+          if (j >= 0 && !visited[j] && H[j].land && H[j].owner === h.owner) { visited[j] = 1; comp.push(j); }
+        }
+      }
+      if (comp.length < 2) {
+        // isolated hex: no capital, no soldiers
+        h.terr = -1;
+        if (h.unit) { h.unit = null; h.tree = TREE.GRAVE; pushLog(state, { type: 'die', hex: i, owner: h.owner }); }
+        if (h.bld === BLD.CAPITAL) h.bld = BLD.NONE;
+        continue;
+      }
+      // records of old territories whose capital lies in this component
+      const cands = [];
+      for (const j of comp) {
+        if (H[j].bld === BLD.CAPITAL && H[j].terr >= 0) {
+          const r = old[H[j].terr];
+          if (r && r.owner === h.owner && r.capital === j && !cands.includes(r)) cands.push(r);
+        }
+      }
+      let rec;
+      if (!cands.length) {
+        rec = { id: state.nextTerrId++, owner: h.owner, gold: 0, capital: -1, hexes: [], size: 0, name: makeName(state) };
+      } else {
+        cands.sort((a, b) => (b.size - a.size) || (b.gold - a.gold) || (a.id - b.id));
+        rec = cands[0];
+        for (let k = 1; k < cands.length; k++) {
+          rec.gold += cands[k].gold;
+          H[cands[k].capital].bld = BLD.NONE;
+        }
+      }
+      // remove stray capitals inside the component (should not happen, but keep the invariant)
+      for (const j of comp) if (H[j].bld === BLD.CAPITAL && j !== rec.capital) H[j].bld = BLD.NONE;
+      if (rec.capital < 0 || !comp.includes(rec.capital) || H[rec.capital].bld !== BLD.CAPITAL) placeCapital(state, rec, comp);
+      rec.hexes = comp; rec.size = comp.length;
+      for (const j of comp) H[j].terr = rec.id;
+      fresh[rec.id] = rec;
+    }
+    state.terrs = fresh;
+  }
+
+  function checkEliminations(state) {
+    const alive = new Array(state.players.length).fill(false);
+    for (const t of Object.values(state.terrs)) alive[t.owner] = true;
+    for (let p = 0; p < state.players.length; p++) {
+      if (state.players[p].alive && !alive[p]) { state.players[p].alive = false; pushLog(state, { type: 'eliminated', player: p }); }
+    }
+    const living = state.players.filter(pl => pl.alive);
+    if (living.length <= 1 && !state.gameOver) {
+      state.gameOver = true;
+      state.winner = living.length ? living[0].id : -1;
+      pushLog(state, { type: 'gameover', winner: state.winner });
+    }
+  }
+
+  /* ---------- game creation ---------- */
+  function createGame(opts) {
+    opts = opts || {};
+    const P = Math.max(2, Math.min(8, opts.players | 0 || 4));
+    const sizeKey = MAP_SIZES[opts.size] ? opts.size : 'medium';
+    const dims = MAP_SIZES[sizeKey];
+    const perPlayer = opts.provincesPerPlayer || PROVINCES_PER_PLAYER[sizeKey] || 3;
+    const cols = opts.cols || dims[0], rows = opts.rows || dims[1];
+    let seed = opts.seed;
+    if (seed == null || seed === '' || isNaN(seed)) seed = (Math.random() * 4294967296) >>> 0;
+    seed = seed >>> 0;
+    const state = {
+      cols, rows, rng: seed | 0, seed, players: [], hexes: [], terrs: {}, nextTerrId: 1,
+      current: 0, round: 1, gameOver: false, winner: -1,
+      humanIdx: (opts.humanIdx == null) ? 0 : opts.humanIdx,
+      aiLevel: opts.aiLevel || 'normal', log: [], turnEvents: [],
+      rules: Object.assign({}, RULESETS[opts.rules] || RULESETS.antiyoy),
+    };
+    for (let p = 0; p < P; p++) state.players.push({ id: p, alive: true, ai: p !== state.humanIdx });
+
+    for (let attempt = 0; ; attempt++) {
+      const land = generateLand(state);
+      const N = cols * rows;
+      state.hexes = [];
+      const landIdx = [];
+      for (let i = 0; i < N; i++) {
+        const isLand = !!land[i];
+        state.hexes.push({ land: isLand, owner: NEUTRAL, unit: null, bld: BLD.NONE, tree: TREE.NONE, terr: -1, coast: false });
+        if (isLand) landIdx.push(i);
+      }
+      if (landIdx.length < N * 0.4 && attempt < 50) continue;
+      if (landIdx.length < P * perPlayer * 8 && attempt < 50) continue;
+      if (!assignOwners(state, landIdx, P, perPlayer) && attempt < 50) continue;
+      // coast flags & trees
+      const nb = neighbors(state);
+      for (const i of landIdx) {
+        const h = state.hexes[i];
+        for (let k = 0; k < 6; k++) { const j = nb[i][k]; if (j < 0 || !state.hexes[j].land) { h.coast = true; break; } }
+      }
+      for (const i of landIdx) {
+        const h = state.hexes[i];
+        if (rand(state) < 0.08) h.tree = h.coast ? TREE.PALM : TREE.PINE;
+      }
+      break;
+    }
+    recomputeTerritories(state);
+    // starting gold & a few peasants
+    const startGold = opts.startGold == null ? START_GOLD : opts.startGold;
+    const startUnits = opts.startUnits == null ? false : !!opts.startUnits;
+    for (const t of Object.values(state.terrs)) {
+      t.gold = startGold;
+      if (!startUnits) continue;
+      const empties = t.hexes.filter(i => { const h = state.hexes[i]; return !h.unit && !h.bld && !h.tree; });
+      shuffle(state, empties);
+      let n = 0;
+      if (t.size >= 4 && empties.length) n = 1;
+      if (t.size >= 8 && empties.length > 1 && rand(state) < 0.6) n = 2;
+      for (let k = 0; k < n; k++) state.hexes[empties[k]].unit = { s: 1, moved: false };
+    }
+    state.turnEvents = startTurn(state);
+    return state;
+  }
+
+  /* ---------- turn processing ---------- */
+  function startTurn(state) {
+    const p = state.current, H = state.hexes, nb = neighbors(state), events = [];
+    let firstAlive = -1;
+    for (const pl of state.players) if (pl.alive) { firstAlive = pl.id; break; }
+    const doNeutral = (p === firstAlive);
+    // gravestones -> trees
+    for (let i = 0; i < H.length; i++) {
+      const h = H[i];
+      if (h.land && (h.owner === p || (doNeutral && h.owner < 0)) && h.tree === TREE.GRAVE) h.tree = h.coast ? TREE.PALM : TREE.PINE;
+    }
+    // tree spreading (decided on a snapshot so growth doesn't chain within a turn)
+    const grow = [];
+    for (let i = 0; i < H.length; i++) {
+      const h = H[i];
+      if (!h.land || h.tree || h.unit || h.bld) continue;
+      if (!(h.owner === p || (doNeutral && h.owner < 0))) continue;
+      let palms = 0, pines = 0;
+      for (let k = 0; k < 6; k++) {
+        const j = nb[i][k]; if (j < 0) continue;
+        const g = H[j]; if (!g.land) continue;
+        if (g.tree === TREE.PALM) palms++; else if (g.tree === TREE.PINE) pines++;
+      }
+      const mult = h.owner < 0 ? 0.5 : 1;   // free land grows slower (nobody chops it)
+      if (h.coast && palms >= 1) { if (rand(state) < P_PALM * mult) grow.push([i, TREE.PALM]); }
+      else if (pines >= 2) { if (rand(state) < P_PINE * mult) grow.push([i, TREE.PINE]); }
+    }
+    for (const [i, t] of grow) H[i].tree = t;
+    // income & wages
+    for (const t of Object.values(state.terrs)) {
+      if (t.owner !== p) continue;
+      const inc = income(state, t), w = wages(state, t);
+      const R = rulesOf(state);
+      let bankrupt = false;
+      if (R.slayBankruptcy) { t.gold += inc; if (t.gold >= w) t.gold -= w; else bankrupt = true; }
+      else { t.gold += inc - w; if (t.gold < 0) { bankrupt = true; t.gold = 0; } }
+      if (bankrupt) {
+        let died = 0;
+        for (const i of t.hexes) { const h = H[i]; if (h.unit) { h.unit = null; h.tree = TREE.GRAVE; died++; } }
+        if (died) { events.push({ type: 'starve', terr: t.id, count: died }); pushLog(state, { type: 'starve', terr: t.id, owner: p, count: died }); }
+      }
+    }
+    // units may move again
+    for (const h of H) if (h.land && h.owner === p && h.unit) h.unit.moved = false;
+    return events;
+  }
+
+  function endTurn(state) {
+    if (state.gameOver) return;
+    checkEliminations(state);
+    if (state.gameOver) return;
+    const n = state.players.length;
+    let next = state.current;
+    for (let k = 0; k < n; k++) { next = (next + 1) % n; if (state.players[next].alive) break; }
+    if (next <= state.current) state.round++;
+    state.current = next;
+    state.turnEvents = startTurn(state);
+  }
+
+  /* ---------- moves ---------- */
+  // All legal destinations for the unit standing on hex `from`
+  function unitTargets(state, from) {
+    const H = state.hexes, h = H[from];
+    if (!h.unit || h.unit.moved || h.terr < 0) return [];
+    const T = state.terrs[h.terr];
+    if (!T || H[from].owner !== T.owner) return [];
+    return targetsFor(state, T, h.unit.s, from);
+  }
+  // Legal destinations for a unit of strength s belonging to territory T
+  // (from = its hex, or -1 if being bought: purchases can be placed anywhere in the territory)
+  function targetsFor(state, T, s, from) {
+    const H = state.hexes, nb = neighbors(state), res = [], seen = new Set();
+    const range = (from >= 0) ? (rulesOf(state).moveRange | 0) : 0;
+    let reach;   // hex -> distance (own hexes only)
+    if (range > 0) {
+      reach = new Map(); reach.set(from, 0);
+      const q = [from];
+      for (let k = 0; k < q.length; k++) {
+        const x = q[k], d = reach.get(x);
+        if (d >= range) continue;
+        for (let dir = 0; dir < 6; dir++) {
+          const j = nb[x][dir];
+          if (j < 0 || reach.has(j)) continue;
+          const g = H[j];
+          if (!g.land || g.terr !== T.id) continue;
+          reach.set(j, d + 1); q.push(j);
+        }
+      }
+    }
+    for (const i of T.hexes) {
+      const g = H[i];
+      const dist = reach ? reach.get(i) : 0;
+      if (reach && dist === undefined) continue;   // not reachable within the range
+      if (i !== from) {
+        if (g.bld) { /* cannot enter own buildings */ }
+        else if (g.unit) { if (g.unit.s + s <= MAX_STRENGTH) res.push({ to: i, kind: 'merge' }); }
+        else if (g.tree) res.push({ to: i, kind: 'chop' });
+        else res.push({ to: i, kind: 'move' });
+      }
+      if (reach && dist >= range) continue;        // the last step may be an attack only from a nearer hex
+      for (let k = 0; k < 6; k++) {
+        const j = nb[i][k];
+        if (j < 0 || seen.has(j)) continue;
+        const e = H[j];
+        if (!e.land || e.owner === T.owner) continue;
+        seen.add(j);
+        if (defense(state, j) < s) res.push({ to: j, kind: 'capture' });
+      }
+    }
+    return res;
+  }
+  function placementTargets(state, terrId, kind, s) {
+    const T = state.terrs[terrId];
+    if (!T) return [];
+    const H = state.hexes, R = rulesOf(state);
+    if (kind === 'unit') return targetsFor(state, T, s, -1);
+    if (kind === 'tower' || kind === 'castle') {
+      return T.hexes.filter(i => { const h = H[i]; return !h.unit && !h.bld && !h.tree; }).map(i => ({ to: i, kind: 'tower' }));
+    }
+    if (kind === 'strong') {
+      if (!R.strongTower) return [];
+      return T.hexes.filter(i => { const h = H[i]; return !h.unit && !h.tree && (!h.bld || h.bld === BLD.TOWER); }).map(i => ({ to: i, kind: 'strong' }));
+    }
+    if (kind === 'farm') {
+      if (!R.farms) return [];
+      const nb = neighbors(state);
+      return T.hexes.filter(i => {
+        const h = H[i];
+        if (h.unit || h.bld || h.tree) return false;
+        for (let k = 0; k < 6; k++) {
+          const j = nb[i][k]; if (j < 0) continue;
+          const g = H[j];
+          if (g.land && g.terr === T.id && (g.bld === BLD.CAPITAL || g.bld === BLD.FARM)) return true;
+        }
+        return false;
+      }).map(i => ({ to: i, kind: 'farm' }));
+    }
+    return [];
+  }
+
+  function captureHex(state, p, unit, to) {
+    const h = state.hexes[to];
+    const prevOwner = h.owner, wasCapital = h.bld === BLD.CAPITAL, prevTerr = h.terr;
+    if (wasCapital && prevTerr >= 0) {
+      const T = state.terrs[prevTerr];
+      pushLog(state, { type: 'capital', hex: to, owner: prevOwner, by: p, gold: T ? T.gold : 0 });
+    }
+    if (h.unit) pushLog(state, { type: 'kill', hex: to, owner: prevOwner, by: p, s: h.unit.s });
+    if (h.bld === BLD.FARM || h.bld === BLD.TOWER || h.bld === BLD.STRONG) pushLog(state, { type: 'building', hex: to, owner: prevOwner, by: p, bld: h.bld });
+    h.owner = p; h.unit = unit; unit.moved = true; h.bld = BLD.NONE; h.tree = TREE.NONE; h.terr = -1;
+    recomputeTerritories(state);
+    checkEliminations(state);
+  }
+
+  function moveUnit(state, from, to) {
+    const H = state.hexes, h = H[from];
+    if (!h.unit || h.unit.moved) return { ok: false, reason: 'nounit' };
+    const tg = unitTargets(state, from).find(t => t.to === to);
+    if (!tg) return { ok: false, reason: 'illegal' };
+    const unit = h.unit;
+    const g = H[to];
+    const tired = rulesOf(state).tiredAfterMove;
+    switch (tg.kind) {
+      case 'move': h.unit = null; g.unit = unit; if (tired) unit.moved = true; break;
+      case 'chop': h.unit = null; g.unit = unit; g.tree = TREE.NONE; unit.moved = true; break;
+      case 'merge': g.unit.s += unit.s; g.unit.moved = g.unit.moved || unit.moved; h.unit = null; break;
+      case 'capture': h.unit = null; captureHex(state, h.owner, unit, to); break;
+    }
+    return { ok: true, kind: tg.kind };
+  }
+
+  function buyUnit(state, terrId, s, to) {
+    const T = state.terrs[terrId];
+    if (!T || s < 1 || s > MAX_STRENGTH) return { ok: false, reason: 'bad' };
+    const cost = UNIT_COST[s];
+    if (T.gold < cost) return { ok: false, reason: 'gold' };
+    const tg = placementTargets(state, terrId, 'unit', s).find(t => t.to === to);
+    if (!tg) return { ok: false, reason: 'illegal' };
+    T.gold -= cost;
+    const g = state.hexes[to];
+    switch (tg.kind) {
+      case 'move': g.unit = { s, moved: false }; break;
+      case 'chop': g.unit = { s, moved: true }; g.tree = TREE.NONE; break;
+      case 'merge': g.unit.s += s; break;
+      case 'capture': captureHex(state, T.owner, { s, moved: true }, to); break;
+    }
+    return { ok: true, kind: tg.kind };
+  }
+
+  // kind: 'tower' | 'strong' | 'farm'
+  function buyBuilding(state, terrId, kind, to) {
+    const T = state.terrs[terrId];
+    if (!T) return { ok: false, reason: 'bad' };
+    if (kind === 'castle') kind = 'tower';
+    const cost = buildingCost(state, T, kind);
+    if (!(cost < Infinity)) return { ok: false, reason: 'bad' };
+    if (T.gold < cost) return { ok: false, reason: 'gold' };
+    const tg = placementTargets(state, terrId, kind).find(t => t.to === to);
+    if (!tg) return { ok: false, reason: 'illegal' };
+    T.gold -= cost;
+    state.hexes[to].bld = kind === 'tower' ? BLD.TOWER : kind === 'strong' ? BLD.STRONG : BLD.FARM;
+    return { ok: true, kind };
+  }
+  function buyCastle(state, terrId, to) { return buyBuilding(state, terrId, 'tower', to); }
+
+  // Generic action application (used by the AI and by the UI for replay)
+  function applyAction(state, a) {
+    switch (a.type) {
+      case 'move': return moveUnit(state, a.from, a.to);
+      case 'reposition': {
+        const r = moveUnit(state, a.from, a.to);
+        if (r.ok && state.hexes[a.to].unit) state.hexes[a.to].unit.moved = true;
+        return r;
+      }
+      case 'buy': return buyUnit(state, a.terr, a.s, a.to);
+      case 'castle': return buyBuilding(state, a.terr, 'tower', a.to);
+      case 'build': return buyBuilding(state, a.terr, a.kind, a.to);
+    }
+    return { ok: false, reason: 'unknown' };
+  }
+
+  /* ---------- helpers for UI / tests ---------- */
+  function clone(state) { return JSON.parse(JSON.stringify(state)); }
+  function colRow(state, i) { return [i % state.cols, (i / state.cols) | 0]; }
+  function humanCanAct(state) {
+    return !state.gameOver && !state.players[state.current].ai;
+  }
+  // sanity check of invariants; returns list of problems (empty = fine)
+  function validate(state) {
+    const problems = [], H = state.hexes;
+    const seenCap = new Set();
+    for (const t of Object.values(state.terrs)) {
+      if (t.hexes.length < 2) problems.push('terr ' + t.id + ' too small');
+      if (t.gold < 0) problems.push('terr ' + t.id + ' negative gold');
+      if (!t.hexes.includes(t.capital)) problems.push('terr ' + t.id + ' capital outside');
+      if (H[t.capital].bld !== BLD.CAPITAL) problems.push('terr ' + t.id + ' capital hex has no capital');
+      if (H[t.capital].unit) problems.push('terr ' + t.id + ' unit on capital');
+      if (seenCap.has(t.capital)) problems.push('shared capital'); seenCap.add(t.capital);
+      for (const i of t.hexes) {
+        if (H[i].terr !== t.id) problems.push('hex ' + i + ' terr mismatch');
+        if (H[i].owner !== t.owner) problems.push('hex ' + i + ' owner mismatch');
+      }
+    }
+    for (let i = 0; i < H.length; i++) {
+      const h = H[i];
+      if (!h.land) { if (h.unit || h.bld || h.tree || h.owner >= 0) problems.push('sea hex ' + i + ' has stuff'); continue; }
+      if (h.owner < 0 && (h.unit || h.bld || h.terr >= 0)) problems.push('neutral hex ' + i + ' with stuff');
+      if (h.unit && (h.unit.s < 1 || h.unit.s > 4)) problems.push('bad unit strength at ' + i);
+      if (h.unit && h.tree) problems.push('unit on tree at ' + i);
+      if (h.unit && h.bld) problems.push('unit on building at ' + i);
+      if (h.bld && h.tree) problems.push('building on tree at ' + i);
+      if (h.terr >= 0 && !state.terrs[h.terr]) problems.push('hex ' + i + ' dangling terr');
+      if (h.terr < 0 && (h.unit || h.bld === BLD.CAPITAL)) problems.push('singleton hex ' + i + ' with unit/capital');
+      if (h.bld === BLD.CAPITAL && (h.terr < 0 || state.terrs[h.terr].capital !== i)) problems.push('orphan capital at ' + i);
+    }
+    return problems;
+  }
+
+  return {
+    UNIT_COST, UNIT_WAGE, CASTLE_COST, TOWER_COST, STRONG_COST, FARM_BASE, FARM_STEP, FARM_INCOME, START_GOLD, MAX_STRENGTH, BLD, BLD_DEF, TREE, MAP_SIZES, PROVINCES_PER_PLAYER, NEUTRAL, RULESETS,
+    rand, randInt, shuffle, neighbors, landNeighbors,
+    createGame, startTurn, endTurn, recomputeTerritories, checkEliminations,
+    strengthAt, defense, income, wages, farmCount, farmCost, buildingCost, rulesOf, territoryAt, playerTerritories, hexCount,
+    unitTargets, targetsFor, placementTargets, moveUnit, buyUnit, buyBuilding, buyCastle, applyAction,
+    clone, colRow, humanCanAct, validate, makeName,
+  };
+});
+
+</script>
+<script>
+/* ============================================================
+   Antiyoy clone — computer opponent
+   nextAction(state, player) -> one action or null (turn finished)
+   ============================================================ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./engine.js'));
+  else root.SlayAI = factory(root.SlayEngine);
+})(typeof self !== 'undefined' ? self : this, function (E) {
+  'use strict';
+  const { BLD, TREE, UNIT_WAGE, UNIT_COST } = E;
+  const WAGE_PEN = 0.35, COST_PEN = 0.05;
+  const LEVELS = {
+    easy: { noise: 4, lazy: true, capBase: 0.55, farmBias: -1.2 },
+    normal: { noise: 0.8, lazy: false, capBase: 0.6, farmBias: 0 },
+    hard: { noise: 0.25, lazy: false, capBase: 0.65, farmBias: 0.8 },
+  };
+
+  function nextAction(state, p) {
+    if (state.gameOver) return null;
+    const H = state.hexes, nb = E.neighbors(state), R = E.rulesOf(state);
+    const L = LEVELS[state.aiLevel] || LEVELS.normal;
+    const noise = L.noise, lazy = L.lazy;
+    const terrs = E.playerTerritories(state, p);
+    if (!terrs.length) return null;
+    const rnd = (m) => E.rand(state) * noise * (m == null ? 1 : m);
+    const range = R.moveRange | 0;
+
+    /* ---- caches ---- */
+    const maxUnitCache = new Map();
+    function maxUnit(t) {
+      if (maxUnitCache.has(t.id)) return maxUnitCache.get(t.id);
+      let m = 0;
+      for (const i of t.hexes) { const u = H[i].unit; if (u && u.s > m) m = u.s; }
+      maxUnitCache.set(t.id, m);
+      return m;
+    }
+    // strongest enemy able to reach hex i (units already there / purchasable with their gold)
+    const threatCache = new Map();
+    function threatAt(i) {
+      if (threatCache.has(i)) return threatCache.get(i);
+      let u = 0, g = 0;
+      for (let k = 0; k < 6; k++) {
+        const j = nb[i][k]; if (j < 0) continue;
+        const h = H[j];
+        if (!h.land || h.owner === p || h.terr < 0) continue;
+        const T = state.terrs[h.terr]; if (!T) continue;
+        u = Math.max(u, maxUnit(T));
+        g = Math.max(g, Math.min(2, Math.floor(T.gold / 15)));
+      }
+      const th = { u, g, max: Math.max(u, g) };
+      threatCache.set(i, th);
+      return th;
+    }
+    function strengthExcl(j, exclude, at, atS) {
+      const h = H[j];
+      let s = (h.unit && j !== exclude) ? h.unit.s : 0;
+      if (h.bld) s = Math.max(s, E.BLD_DEF[h.bld]);
+      if (j === at) s = Math.max(s, atS);
+      return s;
+    }
+    function myDefense(i, exclude, at, atS) {
+      let d = strengthExcl(i, exclude, at, atS);
+      for (let k = 0; k < 6; k++) {
+        const j = nb[i][k]; if (j < 0) continue;
+        const g = H[j];
+        if (g.land && g.owner === p) d = Math.max(d, strengthExcl(j, exclude, at, atS));
+      }
+      return d;
+    }
+    // how much threat gets covered by placing strength S on own hex c (unit on `exclude` ignored)
+    function coverage(c, S, exclude) {
+      let cov = 0;
+      const cells = [c];
+      for (let k = 0; k < 6; k++) { const j = nb[c][k]; if (j >= 0 && H[j].land && H[j].owner === p) cells.push(j); }
+      for (const h of cells) {
+        const th = threatAt(h).max; if (th <= 0) continue;
+        const def = myDefense(h, exclude, -1, 0);
+        if (def >= th) continue;
+        const newDef = Math.max(def, S);
+        if (newDef <= def) continue;
+        const hh = H[h];
+        const w = hh.bld === BLD.CAPITAL ? 3 : (hh.unit && h !== exclude) ? 1 + 0.5 * hh.unit.s : (hh.bld === BLD.FARM ? 2 : hh.bld ? 1.5 : 1);
+        cov += w * (Math.min(newDef, th) - def) / th;
+      }
+      return cov;
+    }
+    // consequences for the enemy territory if we capture hex e
+    function splitInfo(e) {
+      const g = H[e];
+      const To = g.terr >= 0 ? state.terrs[g.terr] : null;
+      if (!To) return { cut: 0, killed: 0, elim: false, newT: 0 };
+      const set = new Set(To.hexes); set.delete(e);
+      const visited = new Set(); const comps = [];
+      for (const s0 of set) {
+        if (visited.has(s0)) continue;
+        const comp = [s0]; visited.add(s0);
+        for (let k = 0; k < comp.length; k++) {
+          for (let d = 0; d < 6; d++) {
+            const j = nb[comp[k]][d];
+            if (j >= 0 && set.has(j) && !visited.has(j)) { visited.add(j); comp.push(j); }
+          }
+        }
+        comps.push(comp);
+      }
+      let cut = 0, killed = 0, newT = 0, big = false;
+      const capComp = comps.find(c => c.includes(To.capital));
+      for (const c of comps) {
+        if (c.length < 2) { cut += 1; if (H[c[0]].unit) killed += H[c[0]].unit.s; }
+        else { big = true; if (c !== capComp) { cut += c.length; newT++; } }
+      }
+      const others = Object.values(state.terrs).some(t => t.owner === To.owner && t.id !== To.id);
+      return { cut, killed, elim: !big && !others, newT };
+    }
+    // value of capturing enemy hex e for territory T
+    function valueOf(T, e) {
+      const g = H[e]; let v = g.owner < 0 ? 3.4 : 4;
+      const To = g.terr >= 0 ? state.terrs[g.terr] : null;
+      if (g.bld === BLD.CAPITAL && To) v += 8 + Math.min(To.gold, 80) / 6;
+      else if (g.bld === BLD.TOWER) v += 3;
+      else if (g.bld === BLD.STRONG) v += 4;
+      else if (g.bld === BLD.FARM) v += 4;
+      if (g.unit) v += 2 + 3 * g.unit.s;
+      if (To) { const si = splitInfo(e); v += 1.5 * si.cut + 3 * si.killed + (si.elim ? 8 : 0) + 1.5 * si.newT; }
+      const mergeIds = new Set();
+      let nf = 0;
+      for (let k = 0; k < 6; k++) {
+        const j = nb[e][k]; if (j < 0) continue;
+        const h = H[j]; if (!h.land) continue;
+        if (h.owner === p) { if (h.terr < 0) v += 2; else if (h.terr !== T.id) mergeIds.add(h.terr); }
+        else if (h.owner < 0) nf += 0.7;
+        else if (h.terr !== g.terr || h.owner !== g.owner) nf += 0.5; else nf++;
+      }
+      for (const id of mergeIds) { const Tm = state.terrs[id]; if (Tm) v += 4 + 0.3 * Tm.hexes.length + Math.min(Tm.gold, 50) / 10; }
+      v += 0.2 * nf;
+      return v;
+    }
+    // risk of losing a unit of strength S standing on captured hex e (moved from `from`)
+    function riskOf(e, S, from) {
+      const th = threatAt(e); if (th.max <= 0) return 0;
+      let d = S;
+      for (let k = 0; k < 6; k++) {
+        const j = nb[e][k]; if (j < 0 || j === from) continue;
+        const h = H[j];
+        if (h.land && h.owner === p) d = Math.max(d, E.strengthAt(state, j));
+      }
+      let r = 0;
+      if (th.u > d) r = S >= 2 ? 1.5 * S : 0.5;
+      else if (th.g > d) r = S >= 2 ? 0.8 * S : 0.3;
+      return r;
+    }
+    function importance(T, v) {
+      const a = Math.max(0, Math.min(1, (v - 4) / 8));
+      const b = Math.max(0, Math.min(1, (T.gold - 20) / 60)) * 0.8;
+      return Math.max(a, b);
+    }
+    // wages must stay below a share of income; deficits only with deep savings
+    function sustainable(T, inc, wag, dW, cost, gain, imp) {
+      const goldAfter = T.gold - cost;
+      if (goldAfter < 0) return false;
+      if (dW <= 0) return true;
+      const wagesAfter = wag + dW, incomeAfter = inc + (gain || 0);
+      const cap = (L.capBase + (1 - L.capBase) * (imp || 0)) * incomeAfter;
+      if (wagesAfter <= cap) return true;
+      const deficit = wagesAfter - incomeAfter;
+      if (deficit <= 0) return goldAfter >= 10 + 4 * (wagesAfter - cap);
+      return goldAfter >= 20 + 15 * deficit;
+    }
+    function chopValue(T, i, s, inc, wag) {
+      const h = H[i];
+      let v = h.tree === TREE.PALM ? 3.4 : h.tree === TREE.PINE ? 3.0 : 2.2;
+      v -= (s - 1) * 0.9;
+      const frac = (T.hexes.length - inc + E.farmCount(state, T)) / T.hexes.length;   // share of unproductive hexes
+      v += 8 * Math.max(0, frac);
+      if (wag >= inc) v += 1.5;
+      if (T.hexes.length <= 3) v += 1;
+      return v;
+    }
+    // enemy hexes attackable from hex `from` (or from anywhere in T when from = -1), with their defence
+    function borderFrom(T, from) {
+      const res = [], seen = new Set();
+      let cells;
+      if (from >= 0 && range > 0) {
+        const reach = new Map(); reach.set(from, 0); const q = [from];
+        for (let k = 0; k < q.length; k++) {
+          const x = q[k], d = reach.get(x);
+          if (d >= range - 1) continue;
+          for (let dir = 0; dir < 6; dir++) {
+            const j = nb[x][dir];
+            if (j < 0 || reach.has(j)) continue;
+            const g = H[j]; if (!g.land || g.terr !== T.id) continue;
+            reach.set(j, d + 1); q.push(j);
+          }
+        }
+        cells = [...reach.keys()];
+      } else cells = T.hexes;
+      for (const i of cells) {
+        for (let k = 0; k < 6; k++) {
+          const j = nb[i][k]; if (j < 0 || seen.has(j)) continue;
+          const g = H[j]; if (!g.land || g.owner === p) continue;
+          seen.add(j); res.push({ i: j, d: E.defense(state, j) });
+        }
+      }
+      return res;
+    }
+
+    /* ---- candidate generation ---- */
+    let best = null;
+    const consider = (a) => { if (!best || a.score > best.score) best = a; };
+
+    for (const T of terrs) {
+      const inc = E.income(state, T), wag = E.wages(state, T);
+      const wholeBorder = borderFrom(T, -1);
+      const valCache = new Map();
+      const val = (e) => { if (!valCache.has(e)) valCache.set(e, valueOf(T, e)); return valCache.get(e); };
+      const units = T.hexes.filter(i => H[i].unit && !H[i].unit.moved);
+      const empties = T.hexes.filter(i => { const h = H[i]; return !h.unit && !h.bld && !h.tree; });
+      const unitBorder = new Map();   // hex -> attackable enemy hexes for a unit standing there
+      const bf = (i) => { if (!unitBorder.has(i)) unitBorder.set(i, borderFrom(T, i)); return unitBorder.get(i); };
+      const unitTg = new Map();
+      const tg = (i) => { if (!unitTg.has(i)) unitTg.set(i, E.unitTargets(state, i)); return unitTg.get(i); };
+
+      // 1. moves of existing units: captures and tree chopping within reach
+      for (const i of units) {
+        const s = H[i].unit.s;
+        for (const b of bf(i)) if (b.d < s) consider({ type: 'move', from: i, to: b.i, score: val(b.i) - riskOf(b.i, s, i) + rnd() });
+        for (const t of tg(i)) if (t.kind === 'chop') consider({ type: 'move', from: i, to: t.to, score: chopValue(T, t.to, s, inc, wag) + rnd(0.5) });
+      }
+      // 2. merging two units (a moves onto b) to reach a better-defended target near b
+      for (let x = 0; x < units.length; x++) {
+        for (let y = 0; y < units.length; y++) {
+          if (x === y) continue;
+          const ia = units[x], ib = units[y];
+          const sa = H[ia].unit.s, sb = H[ib].unit.s, S = sa + sb;
+          if (S > E.MAX_STRENGTH) continue;
+          if (!tg(ia).some(t => t.to === ib && t.kind === 'merge')) continue;
+          const dW = UNIT_WAGE[S] - UNIT_WAGE[sa] - UNIT_WAGE[sb];
+          const mn = Math.max(sa, sb);
+          for (const b of bf(ib)) {
+            if (!(b.d < S && b.d >= mn)) continue;
+            const v = val(b.i);
+            if (!sustainable(T, inc, wag, dW, 0, 1, importance(T, v))) continue;
+            consider({ type: 'move', from: ia, to: ib, score: v - riskOf(b.i, S, ia) - WAGE_PEN * dW - 1.5 + rnd() });
+          }
+        }
+      }
+      // 3. purchases
+      if (!(lazy && E.rand(state) < 0.35)) {
+        for (let k = 1; k <= E.MAX_STRENGTH; k++) {
+          const cost = UNIT_COST[k];
+          if (T.gold < cost) break;
+          const wk = UNIT_WAGE[k];
+          for (const b of wholeBorder) {
+            if (!(b.d < k && b.d >= k - 1)) continue;
+            const v = val(b.i);
+            if (!sustainable(T, inc, wag, wk, cost, 1, importance(T, v))) continue;
+            consider({ type: 'buy', terr: T.id, s: k, to: b.i, score: v - riskOf(b.i, k, -1) - WAGE_PEN * wk - COST_PEN * cost + rnd() });
+          }
+          if (k === 1) for (const ti of T.hexes) {
+            if (!H[ti].tree) continue;
+            const cv = chopValue(T, ti, 1, inc, wag);
+            if (!sustainable(T, inc, wag, wk, cost, 1, importance(T, 4 + cv))) continue;
+            consider({ type: 'buy', terr: T.id, s: 1, to: ti, score: cv - WAGE_PEN * 2 - COST_PEN * 10 - 1 + rnd(0.5) });
+          }
+          if (k <= 2 && sustainable(T, inc, wag, wk, cost, 0, 0.5)) for (const c of empties) {
+            const cov = coverage(c, k, -1); if (cov < 1) continue;
+            consider({ type: 'buy', terr: T.id, s: k, to: c, score: 2 * cov - WAGE_PEN * wk - COST_PEN * cost - 1 + rnd(0.5) });
+          }
+          // upgrade an unmoved unit in place (buy onto it)
+          for (const i of units) {
+            const s = H[i].unit.s; if (s + k > E.MAX_STRENGTH) continue;
+            const S = s + k, dW = UNIT_WAGE[S] - UNIT_WAGE[s];
+            for (const b of bf(i)) {
+              if (!(b.d < S && b.d >= s)) continue;
+              const v = val(b.i);
+              if (!sustainable(T, inc, wag, dW, cost, 1, importance(T, v))) continue;
+              consider({ type: 'buy', terr: T.id, s: k, to: i, score: v - riskOf(b.i, S, i) - WAGE_PEN * dW - COST_PEN * cost - 0.5 + rnd() });
+            }
+          }
+        }
+        // 4. towers
+        if (T.gold >= E.TOWER_COST) {
+          for (const c of empties) {
+            const cov = coverage(c, 2, -1); if (cov < 1) continue;
+            consider({ type: 'build', kind: 'tower', terr: T.id, to: c, score: 2.4 * cov - 2.5 + rnd(0.5) });
+          }
+        }
+        if (R.strongTower && T.gold >= E.STRONG_COST) {
+          for (const c of T.hexes) {
+            const h = H[c]; if (h.unit || h.tree || (h.bld && h.bld !== BLD.TOWER)) continue;
+            const cov = coverage(c, 3, -1); if (cov < 1.5) continue;
+            consider({ type: 'build', kind: 'strong', terr: T.id, to: c, score: 2.4 * cov - 5 + rnd(0.5) });
+          }
+        }
+        // 5. farms: long-term investment, preferably in safe interior spots
+        if (R.farms) {
+          const fcost = E.farmCost(state, T);
+          if (T.gold >= fcost + 2) {
+            for (const t of E.placementTargets(state, T.id, 'farm')) {
+              const c = t.to;
+              let exposed = 0;
+              for (let k = 0; k < 6; k++) { const j = nb[c][k]; if (j >= 0 && H[j].land && H[j].owner !== p) exposed++; }
+              const th = threatAt(c).max;
+              const pay = fcost / E.FARM_INCOME;   // turns to pay back
+              let sc = 7.5 + L.farmBias - 0.9 * pay - 0.7 * exposed - (th > myDefense(c, -1, -1, 0) ? 2.5 : 0);
+              if (T.gold > 40) sc += 1;
+              if (T.hexes.length >= 8) sc += 0.3;
+              consider({ type: 'build', kind: 'farm', terr: T.id, to: c, score: sc + rnd(0.5) });
+            }
+          }
+        }
+      }
+    }
+    if (best && best.score > 0.5) return best;
+
+    // 6. nothing profitable: reposition idle units where they protect more (costs the unit's move)
+    let bestRe = null;
+    for (const T of terrs) {
+      const units = T.hexes.filter(i => H[i].unit && !H[i].unit.moved);
+      if (!units.length) continue;
+      for (const i of units) {
+        const s = H[i].unit.s;
+        const cur = coverage(i, s, i);
+        for (const t of E.unitTargets(state, i)) {
+          if (t.kind !== 'move') continue;
+          const gain = coverage(t.to, s, i) - cur;
+          if (gain >= 1 && (!bestRe || gain > bestRe.gain)) bestRe = { type: 'reposition', from: i, to: t.to, gain };
+        }
+      }
+    }
+    return bestRe;
+  }
+
+  // Run a whole AI turn synchronously (used by tests / instant mode). Returns actions performed.
+  function playTurn(state, p, maxActions) {
+    const done = [];
+    const cap = maxActions || 400;
+    for (let n = 0; n < cap; n++) {
+      const a = nextAction(state, p);
+      if (!a) break;
+      const r = E.applyAction(state, a);
+      if (!r.ok) { a.error = r.reason; done.push(a); break; }
+      done.push(a);
+      if (state.gameOver) break;
+    }
+    return done;
+  }
+
+  return { nextAction, playTurn, LEVELS };
+});
+
+</script>
+<script>
+/* ============================================================
+   Antiyoy clone — user interface in the style of the original
+   (grey neutral land, inner lakes, minimal HUD, mint menus)
+   ============================================================ */
+(function () {
+  'use strict';
+  const E = window.SlayEngine, AI = window.SlayAI;
+  const { BLD, TREE, UNIT_COST, UNIT_WAGE } = E;
+  const SAVE_KEY = 'antiyoy-clone-save-v2';
+  const PREF_KEY = 'antiyoy-clone-prefs-v2';
+  const COARSE = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+  /* ---------------- i18n ---------------- */
+  const I18N = {
+    it: {
+      start: 'Inizia', resume: 'Riprendi', newGame: 'Nuova partita', rules: 'Regole', close: 'Chiudi', undo: 'Annulla', endTurn: 'Fine turno',
+      difficulty: 'Difficoltà', diffVals: ['facile', 'normale', 'difficile'], mapSize: 'Mappa', sizeVals: ['piccola', 'media', 'grande', 'enorme'],
+      players: 'Giocatori', playersVal: (n) => n + ' giocatori', rulesLbl: 'Regole', rulesVals: ['Antiyoy', 'Slay'], lang: 'Lingua', langVals: ['Italiano', 'English'],
+      seed: 'Seme (vuoto = casuale)', speed: 'Velocità avversari', spVals: ['normale', 'veloce', 'istantanea'], showNum: 'Numeri sulle unità',
+      you: 'Tu', colors: ['Verde', 'Giallo', 'Rosso', 'Ciano', 'Viola', 'Arancione', 'Rosa', 'Lime'], neutral: 'Terra libera', sea: 'Mare',
+      unit: ['', 'Contadino', 'Lanciere', 'Cavaliere', 'Barone'], farm: 'Fattoria', tower: 'Torre', strong: 'Torre forte', capital: 'Capitale',
+      pine: 'Pino', palm: 'Palma', grave: 'Lapide', defense: 'difesa', strength: 'forza', hexes: 'esagoni', tired: 'ha già agito', ready: 'pronto',
+      aiTurn: 'Turno di {0}… tocca per accelerare', spectating: 'Stai osservando la fine della partita', round: 'Round', perTurn: '/turno',
+      win: 'Vittoria!', winText: 'Hai conquistato l\'isola in {0} round.', lose: 'Sconfitta', loseText: 'Sei stato eliminato: non hai più province.',
+      aiWin: 'Partita finita', aiWinText: 'Ha vinto {0}.', watch: 'Continua a guardare',
+      starveMsg: 'Una tua provincia non ha potuto pagare i salari: i soldati sono morti.', capitalLostMsg: 'Capitale persa: {0} oro andati perduti.',
+      unitLostMsg: 'Hai perso {0} unità.', hexesLostMsg: 'Hai perso {0} {1}.', hexOne: 'esagono', hexMany: 'esagoni', elimMsg: '{0} è stato eliminato.',
+      eliminated: 'eliminato', lvl: 'liv.', notEnough: 'Oro insufficiente', farmRule: 'accanto a capitale o fattoria',
+    },
+    en: {
+      start: 'Start', resume: 'Resume', newGame: 'New game', rules: 'Rules', close: 'Close', undo: 'Undo', endTurn: 'End turn',
+      difficulty: 'Difficulty', diffVals: ['easy', 'normal', 'hard'], mapSize: 'Map size', sizeVals: ['small', 'medium', 'big', 'huge'],
+      players: 'Players', playersVal: (n) => n + ' players', rulesLbl: 'Rules', rulesVals: ['Antiyoy', 'Slay'], lang: 'Language', langVals: ['Italiano', 'English'],
+      seed: 'Seed (blank = random)', speed: 'AI speed', spVals: ['normal', 'fast', 'instant'], showNum: 'Numbers on units',
+      you: 'You', colors: ['Green', 'Yellow', 'Red', 'Cyan', 'Purple', 'Orange', 'Pink', 'Lime'], neutral: 'Free land', sea: 'Sea',
+      unit: ['', 'Peasant', 'Spearman', 'Knight', 'Baron'], farm: 'Farm', tower: 'Tower', strong: 'Strong tower', capital: 'Capital',
+      pine: 'Pine', palm: 'Palm', grave: 'Grave', defense: 'defence', strength: 'strength', hexes: 'hexes', tired: 'already acted', ready: 'ready',
+      aiTurn: '{0}\'s turn… tap to speed up', spectating: 'You are watching the end of the game', round: 'Round', perTurn: '/turn',
+      win: 'Victory!', winText: 'You conquered the island in {0} rounds.', lose: 'Defeat', loseText: 'You have been eliminated: no provinces left.',
+      aiWin: 'Game over', aiWinText: '{0} won.', watch: 'Keep watching',
+      starveMsg: 'One of your provinces could not pay its wages: the soldiers died.', capitalLostMsg: 'Capital lost: {0} gold gone.',
+      unitLostMsg: 'You lost {0} unit(s).', hexesLostMsg: 'You lost {0} {1}.', hexOne: 'hex', hexMany: 'hexes', elimMsg: '{0} has been eliminated.',
+      eliminated: 'eliminated', lvl: 'lv.', notEnough: 'Not enough gold', farmRule: 'next to a capital or a farm',
+    },
+  };
+  const RULES = {
+    it: (R) => `
+<p><b>Obiettivo.</b> Conquista l'isola eliminando tutti gli avversari (chi non possiede più alcuna provincia è eliminato). La terra grigia è libera: chiunque può occuparla.</p>
+<p><b>Province.</b> Una provincia è un gruppo di 2 o più esagoni adiacenti dello stesso colore, con una <b>capitale</b> che custodisce l'oro. Ogni esagono produce <b>1 oro</b> per turno; un esagono con un albero non produce nulla${R.farms ? '; una <b>fattoria</b> produce 4 oro in più' : ''}. In alto vedi l'oro della provincia selezionata e il bilancio netto per turno (entrate − salari).</p>
+<table><tr><th>Unità / edificio</th><th>Forza / difesa</th><th>Costo</th><th>Salario</th></tr>
+<tr><td>Contadino</td><td>1</td><td>10</td><td>2</td></tr><tr><td>Lanciere</td><td>2</td><td>20</td><td>6</td></tr>
+<tr><td>Cavaliere</td><td>3</td><td>30</td><td>18</td></tr><tr><td>Barone</td><td>4</td><td>40</td><td>54</td></tr>
+<tr><td>Torre</td><td>difesa 2</td><td>15</td><td>—</td></tr>${R.strongTower ? '<tr><td>Torre forte</td><td>difesa 3</td><td>35</td><td>—</td></tr>' : ''}
+${R.farms ? '<tr><td>Fattoria</td><td>+4 oro/turno</td><td>12, +2 per ogni fattoria già presente</td><td>—</td></tr>' : ''}<tr><td>Capitale</td><td>difesa 1</td><td>—</td><td>—</td></tr></table>
+<p><b>Salari.</b> All'inizio del tuo turno ogni provincia incassa le entrate e paga i salari. Se l'oro non basta, <b>tutti i soldati della provincia muoiono</b> (lasciano lapidi che diventano alberi).</p>
+<p><b>Movimento e cattura.</b> ${R.moveRange ? `Un'unità può spostarsi fino a <b>${R.moveRange} esagoni</b> attraverso la propria provincia e agisce <b>una sola volta per turno</b>.` : 'Un\'unità può spostarsi ovunque nella propria provincia; muoversi al suo interno non consuma la mossa.'} Può <b>catturare</b> un esagono adiacente (libero o nemico) solo se la sua forza è <b>maggiore della difesa</b> dell'esagono: la difesa è la forza più alta tra l'unità o l'edificio che lo occupa e quelli sugli esagoni adiacenti dello stesso proprietario. Catturare o tagliare un albero conclude la mossa.</p>
+<p><b>Unire le unità.</b> Sposta un'unità su un'altra della stessa provincia per unirle (somma delle forze al massimo 4). Puoi anche comprare un'unità e piazzarla direttamente su una tua unità, oppure su un esagono catturabile.</p>
+${R.farms ? '<p><b>Fattorie.</b> Vanno costruite accanto alla capitale o a un\'altra fattoria; il costo cresce di 2 per ogni fattoria già presente nella provincia. Se il nemico cattura l\'esagono, la fattoria viene distrutta.</p>' : ''}
+<p><b>Torri.</b> Difendono l'esagono e quelli adiacenti${R.strongTower ? '; la torre forte può essere costruita anche sopra una torre normale' : ''}.</p>
+<p><b>Capitali e divisioni.</b> Catturare la capitale nemica distrugge tutto l'oro che conteneva. Se una provincia viene tagliata in due, la parte senza capitale ne riceve una nuova (senza oro); le unità rimaste su esagoni isolati muoiono. Se due tue province si toccano, si fondono. Le palme si diffondono lungo la costa, i pini dove ce ne sono già due vicini.</p>
+<p><b>Comandi.</b> Tocca una tua provincia: in basso compaiono il pulsante <b>costruisci</b> (tocca più volte per scegliere fattoria / torre / torre forte) e il pulsante <b>unità</b> (tocca più volte per il livello); poi tocca l'esagono dove piazzare. Tocca una tua unità e poi la destinazione (o trascinala). Il punto esclamativo sulla capitale segnala che nella provincia puoi ancora fare qualcosa. ↺ annulla, ⏭ fine turno. Pizzica per zoomare, trascina per spostare la mappa.</p>`,
+    en: (R) => `
+<p><b>Goal.</b> Conquer the island by eliminating every opponent (a player without provinces is out). Grey land is free: anyone can take it.</p>
+<p><b>Provinces.</b> A province is a group of 2+ adjacent hexes of the same colour with a <b>capital</b> holding its gold. Every hex yields <b>1 gold</b> per turn; a hex with a tree yields nothing${R.farms ? '; a <b>farm</b> yields 4 extra gold' : ''}. The top of the screen shows the gold of the selected province and its net balance per turn (income − wages).</p>
+<table><tr><th>Unit / building</th><th>Strength / defence</th><th>Cost</th><th>Wage</th></tr>
+<tr><td>Peasant</td><td>1</td><td>10</td><td>2</td></tr><tr><td>Spearman</td><td>2</td><td>20</td><td>6</td></tr>
+<tr><td>Knight</td><td>3</td><td>30</td><td>18</td></tr><tr><td>Baron</td><td>4</td><td>40</td><td>54</td></tr>
+<tr><td>Tower</td><td>defence 2</td><td>15</td><td>—</td></tr>${R.strongTower ? '<tr><td>Strong tower</td><td>defence 3</td><td>35</td><td>—</td></tr>' : ''}
+${R.farms ? '<tr><td>Farm</td><td>+4 gold/turn</td><td>12, +2 per farm already built</td><td>—</td></tr>' : ''}<tr><td>Capital</td><td>defence 1</td><td>—</td><td>—</td></tr></table>
+<p><b>Wages.</b> At the start of your turn each province collects its income and pays wages. If the gold is not enough, <b>all soldiers of that province die</b> (leaving graves that turn into trees).</p>
+<p><b>Moving and capturing.</b> ${R.moveRange ? `A unit can move up to <b>${R.moveRange} hexes</b> through its own province and acts <b>once per turn</b>.` : 'A unit may move anywhere inside its province; moving inside it does not use the move.'} It can <b>capture</b> an adjacent hex (free or enemy) only if its strength is <b>greater than the hex's defence</b>: the defence is the highest strength among the unit or building on it and those on adjacent hexes of the same owner. Capturing or chopping a tree ends the move.</p>
+<p><b>Combining.</b> Move a unit onto another of the same province to combine them (total strength at most 4). You can also buy a unit and drop it directly onto one of yours, or onto a capturable hex.</p>
+${R.farms ? '<p><b>Farms.</b> Must be built next to the capital or another farm; the cost grows by 2 for every farm already in the province. If the enemy captures the hex, the farm is destroyed.</p>' : ''}
+<p><b>Towers.</b> Defend their hex and the adjacent ones${R.strongTower ? '; the strong tower can also be built on top of a normal tower' : ''}.</p>
+<p><b>Capitals and splits.</b> Capturing an enemy capital destroys all the gold it held. If a province is cut in two, the part without the capital gets a new one (with no gold); units left on isolated hexes die. When two of your provinces touch, they merge. Palms spread along the coast, pines grow where two are already adjacent.</p>
+<p><b>Controls.</b> Tap one of your provinces: the <b>build</b> button (tap repeatedly to choose farm / tower / strong tower) and the <b>unit</b> button (tap repeatedly for the level) appear at the bottom; then tap the hex where to place. Tap one of your units and then the destination (or drag it). The exclamation mark on a capital means the province can still do something. ↺ undo, ⏭ end turn. Pinch to zoom, drag to pan.</p>`,
+  };
+
+  const PLAYER_COLORS = ['#5ed43a', '#f0d33e', '#f0625b', '#5fd8e3', '#a870e6', '#f79b30', '#f27bd0', '#b9ea3d'];
+  const NEUTRAL_COLOR = '#b4b4b4';
+  const WATER_COLOR = '#2f7ee2';
+  const SIZE_KEYS = ['small', 'medium', 'large', 'huge'];
+  const DIFF_KEYS = ['easy', 'normal', 'hard'];
+  const RULE_KEYS = ['antiyoy', 'slay'];
+  const LANG_KEYS = ['it', 'en'];
+  const SPEED_KEYS = ['normal', 'fast', 'instant'];
+
+  let lang = 'it';
+  const t = (k, ...args) => {
+    let s = I18N[lang][k]; if (s === undefined) s = I18N.it[k]; if (s === undefined) s = k;
+    if (typeof s === 'string') args.forEach((a, i) => { s = s.replace('{' + i + '}', a); });
+    return s;
+  };
+  const playerName = (p) => p < 0 ? t('neutral') : ((state && p === state.humanIdx) ? t('you') + ' (' + t('colors')[p] + ')' : t('colors')[p]);
+
+  /* ---------------- state ---------------- */
+  let state = null;
+  let undoStack = [];
+  const sel = { unit: -1, terr: -1, inspect: -1, placing: null, targets: [], targetMap: new Map() };
+  let hover = -1;
+  const drag = { active: false, from: -1, x: 0, y: 0, startX: 0, startY: 0 };
+  let aiTimer = null, aiRunning = false, fastForward = false, spectating = false, elimNoticed = false;
+  let humanSnapshot = null;
+  const flash = { hex: -1, t: 0 };
+  const prefs = { lang: 'it', speed: 'fast', showNum: false, players: 4, size: 'medium', diff: 'normal', rules: 'antiyoy' };
+  let toastTimer = null;
+  let dirty = true;
+
+  /* ---------------- DOM ---------------- */
+  const $ = (id) => document.getElementById(id);
+  const canvas = $('map'), ctx = canvas.getContext('2d');
+  if (!ctx.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+      r = Math.min(Math.abs(r || 0), w / 2, h / 2);
+      this.moveTo(x + r, y); this.lineTo(x + w - r, y); this.quadraticCurveTo(x + w, y, x + w, y + r);
+      this.lineTo(x + w, y + h - r); this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      this.lineTo(x + r, y + h); this.quadraticCurveTo(x, y + h, x, y + h - r);
+      this.lineTo(x, y + r); this.quadraticCurveTo(x, y, x + r, y); this.closePath();
+      return this;
+    };
+  }
+  const geo = { R: 20, ox: 0, oy: 0, dpr: 1, w: 0, h: 0, baseR: 20, baseOx: 0, baseOy: 0, vx: 0, vy: 0, vw: 0, vh: 0, mapW: 0, mapH: 0 };
+  const view = { scale: 1, tx: 0, ty: 0 };
+  const requestRender = () => { dirty = true; };
+
+  /* ---------------- persistence ---------------- */
+  function loadPrefs() { try { const s = localStorage.getItem(PREF_KEY); if (s) Object.assign(prefs, JSON.parse(s)); } catch (e) { } lang = prefs.lang || 'it'; }
+  function savePrefs() { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) { } }
+  function saveGame() {
+    if (!state || state.gameOver) { try { localStorage.removeItem(SAVE_KEY); } catch (e) { } return; }
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, spectating })); } catch (e) { }
+  }
+  function loadGame() { try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && o.state && o.state.hexes ? o : null; } catch (e) { return null; } }
+
+  /* ---------------- geometry ---------------- */
+  function layout() {
+    geo.dpr = Math.min(3, window.devicePixelRatio || 1);
+    geo.w = Math.max(50, window.innerWidth); geo.h = Math.max(50, window.innerHeight);
+    canvas.width = Math.round(geo.w * geo.dpr); canvas.height = Math.round(geo.h * geo.dpr);
+    canvas.style.width = geo.w + 'px'; canvas.style.height = geo.h + 'px';
+    geo.vx = 0; geo.vy = 0; geo.vw = geo.w; geo.vh = geo.h;
+    requestRender();
+    if (!state) return;
+    let minC = 1e9, maxC = -1, minR = 1e9, maxR = -1;
+    for (let i = 0; i < state.hexes.length; i++) {
+      if (!state.hexes[i].land) continue;
+      const c = i % state.cols, r = (i / state.cols) | 0;
+      if (c < minC) minC = c; if (c > maxC) maxC = c; if (r < minR) minR = r; if (r > maxR) maxR = r;
+    }
+    if (maxC < 0) { minC = 0; maxC = state.cols - 1; minR = 0; maxR = state.rows - 1; }
+    const S3 = Math.sqrt(3);
+    const bw = (maxC - minC + 1) + 0.5 + 0.6, bh = (maxR - minR) * 1.5 + 2 + 0.6;
+    const pad = 12;
+    let R = Math.min((geo.vw - pad * 2) / (S3 * bw), (geo.vh - pad * 2 - 110) / bh);
+    R = Math.max(COARSE ? 12 : 8, R);
+    geo.R = R; geo.ox = 0; geo.oy = 0;
+    let xmin = 1e9, xmax = -1e9, ymin = 1e9, ymax = -1e9;
+    for (let i = 0; i < state.hexes.length; i++) {
+      if (!state.hexes[i].land) continue;
+      const [x, y] = hexCenter(i);
+      xmin = Math.min(xmin, x - S3 * R / 2); xmax = Math.max(xmax, x + S3 * R / 2);
+      ymin = Math.min(ymin, y - R); ymax = Math.max(ymax, y + R);
+    }
+    geo.baseR = R;
+    geo.baseOx = geo.vx + (geo.vw - (xmax - xmin)) / 2 - xmin;
+    geo.baseOy = geo.vy + (geo.vh - (ymax - ymin)) / 2 - ymin;
+    geo.mapW = xmax - xmin; geo.mapH = ymax - ymin;
+    applyView();
+  }
+  function applyView() {
+    view.scale = Math.max(1, Math.min(6, view.scale));
+    geo.R = geo.baseR * view.scale;
+    // the map's bounding box is centred at (cx + tx, cy + ty); keep it inside the viewport when it fits,
+    // otherwise never leave empty water between the map edge and the screen edge
+    const boxW = (geo.mapW || geo.w) * view.scale, boxH = (geo.mapH || geo.h) * view.scale;
+    const cx = geo.vx + geo.vw / 2, cy = geo.vy + geo.vh / 2;
+    const slackX = Math.max(0, (boxW - geo.vw) / 2 + 24), slackY = Math.max(0, (boxH - geo.vh) / 2 + 24);
+    view.tx = Math.max(-slackX, Math.min(slackX, view.tx));
+    view.ty = Math.max(-slackY, Math.min(slackY, view.ty));
+    geo.ox = geo.baseOx * view.scale + view.tx + cx * (1 - view.scale);
+    geo.oy = geo.baseOy * view.scale + view.ty + cy * (1 - view.scale);
+    requestRender();
+  }
+  function zoomAt(px, py, factor) {
+    const old = view.scale;
+    const ns = Math.max(1, Math.min(6, old * factor));
+    if (ns === old) return;
+    const cx = geo.vx + geo.vw / 2, cy = geo.vy + geo.vh / 2;
+    const k = ns / old;
+    view.tx = (view.tx + cx * (1 - old)) * k + px * (1 - k) - cx * (1 - ns);
+    view.ty = (view.ty + cy * (1 - old)) * k + py * (1 - k) - cy * (1 - ns);
+    view.scale = ns;
+    applyView();
+  }
+  function resetView() { view.scale = 1; view.tx = 0; view.ty = 0; applyView(); }
+  function hexCenter(i) {
+    const c = i % state.cols, r = (i / state.cols) | 0;
+    return [geo.ox + Math.sqrt(3) * geo.R * (c + 0.5 * (r & 1)), geo.oy + 1.5 * geo.R * r];
+  }
+  function pixelToHex(px, py) {
+    if (!state) return -1;
+    const x = px - geo.ox, y = py - geo.oy, R = geo.R;
+    const qf = (Math.sqrt(3) / 3 * x - y / 3) / R, rf = (2 / 3 * y) / R;
+    let q = Math.round(qf), r = Math.round(rf), s = Math.round(-qf - rf);
+    const dq = Math.abs(q - qf), dr = Math.abs(r - rf), ds = Math.abs(s - (-qf - rf));
+    if (dq > dr && dq > ds) q = -r - s; else if (dr > ds) r = -q - s;
+    const col = q + ((r - (r & 1)) >> 1);
+    if (r < 0 || r >= state.rows || col < 0 || col >= state.cols) return -1;
+    return r * state.cols + col;
+  }
+  function hexPath(c, x, y, R, dy) {
+    dy = dy || 0;
+    for (let k = 0; k < 6; k++) {
+      const a = Math.PI / 6 + k * Math.PI / 3;
+      const px = x + R * Math.cos(a), py = y + dy + R * Math.sin(a);
+      if (k === 0) c.moveTo(px, py); else c.lineTo(px, py);
+    }
+    c.closePath();
+  }
+  function hexVertex(x, y, R, k) { const a = Math.PI / 6 + (k % 6) * Math.PI / 3; return [x + R * Math.cos(a), y + R * Math.sin(a)]; }
+
+  /* ---------------- sprites (cartoon style of the original) ---------------- */
+  const OUT = '#1e1e1e';
+  function shadow(c, x, y, u, rx, ry) { c.fillStyle = 'rgba(0,0,0,0.28)'; c.beginPath(); c.ellipse(x, y, rx * u, ry * u, 0, 0, Math.PI * 2); c.fill(); }
+  function drawUnit(c, x, y, u, s, alpha) {
+    c.save(); c.globalAlpha = alpha; c.translate(x, y);
+    shadow(c, 0, 9.5 * u, u, 5.5, 1.8);
+    c.lineWidth = Math.max(0.6, 0.85 * u); c.strokeStyle = OUT; c.lineJoin = 'round';
+    const shirt = ['', '#5fe0e6', '#4a8ff5', '#b3bcc6', '#b06cf0'][s];
+    if (s === 4) { c.fillStyle = '#e0453a'; c.beginPath(); c.moveTo(-5 * u, -3 * u); c.lineTo(5 * u, -3 * u); c.lineTo(6.5 * u, 6 * u); c.lineTo(-6.5 * u, 6 * u); c.closePath(); c.fill(); c.stroke(); }
+    c.fillStyle = '#2d3f8f'; c.beginPath(); c.roundRect(-3.2 * u, 3 * u, 2.6 * u, 6 * u, 0.8 * u); c.roundRect(0.6 * u, 3 * u, 2.6 * u, 6 * u, 0.8 * u); c.fill(); c.stroke();
+    c.fillStyle = shirt; c.beginPath(); c.roundRect(-4.2 * u, -3.5 * u, 8.4 * u, 7.5 * u, 2 * u); c.fill(); c.stroke();
+    c.fillStyle = '#f6d0a8'; c.beginPath(); c.roundRect(-6 * u, -2.5 * u, 2 * u, 5 * u, 1 * u); c.roundRect(4 * u, -2.5 * u, 2 * u, 5 * u, 1 * u); c.fill(); c.stroke();
+    c.fillStyle = s === 3 ? '#9aa4ae' : '#f6d0a8'; c.beginPath(); c.arc(0, -7.5 * u, 3.6 * u, 0, Math.PI * 2); c.fill(); c.stroke();
+    if (s === 1) { c.fillStyle = '#6b4a2b'; c.beginPath(); c.arc(0, -8.2 * u, 3.6 * u, Math.PI * 1.05, Math.PI * 1.95); c.closePath(); c.fill(); }
+    if (s === 2) {
+      c.fillStyle = '#6c7a89'; c.beginPath(); c.arc(0, -8 * u, 3.8 * u, Math.PI, 0); c.closePath(); c.fill(); c.stroke();
+      c.strokeStyle = '#8a5a2b'; c.lineWidth = 1.5 * u; c.beginPath(); c.moveTo(6.5 * u, 8 * u); c.lineTo(6.5 * u, -12 * u); c.stroke();
+      c.fillStyle = '#d7dde2'; c.strokeStyle = OUT; c.lineWidth = 0.7 * u; c.beginPath(); c.moveTo(6.5 * u, -16 * u); c.lineTo(4.6 * u, -11.5 * u); c.lineTo(8.4 * u, -11.5 * u); c.closePath(); c.fill(); c.stroke();
+    } else if (s === 3) {
+      c.fillStyle = '#5b6770'; c.fillRect(-3.6 * u, -8 * u, 7.2 * u, 1.4 * u);
+      c.fillStyle = '#e0453a'; c.beginPath(); c.moveTo(-1.2 * u, -11 * u); c.quadraticCurveTo(0, -16.5 * u, 4.5 * u, -14 * u); c.quadraticCurveTo(1.8 * u, -13 * u, 1.2 * u, -11 * u); c.closePath(); c.fill();
+      c.strokeStyle = '#dfe4e8'; c.lineWidth = 1.6 * u; c.beginPath(); c.moveTo(5.5 * u, 4 * u); c.lineTo(10 * u, -8 * u); c.stroke();
+      c.strokeStyle = '#7a5a2b'; c.lineWidth = 1.4 * u; c.beginPath(); c.moveTo(5 * u, 0.5 * u); c.lineTo(8.5 * u, 2 * u); c.stroke();
+      c.fillStyle = '#e0453a'; c.strokeStyle = OUT; c.lineWidth = 0.85 * u; c.beginPath(); c.arc(-6.5 * u, 1 * u, 3.4 * u, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.strokeStyle = '#f2d16b'; c.lineWidth = 0.9 * u; c.beginPath(); c.moveTo(-6.5 * u, -1.4 * u); c.lineTo(-6.5 * u, 3.4 * u); c.moveTo(-8.9 * u, 1 * u); c.lineTo(-4.1 * u, 1 * u); c.stroke();
+    } else if (s === 4) {
+      c.fillStyle = '#f5c542'; c.strokeStyle = OUT; c.lineWidth = 0.8 * u;
+      c.beginPath(); c.moveTo(-4 * u, -10.2 * u); c.lineTo(-4 * u, -14.5 * u); c.lineTo(-1.8 * u, -12 * u); c.lineTo(0, -15.5 * u); c.lineTo(1.8 * u, -12 * u); c.lineTo(4 * u, -14.5 * u); c.lineTo(4 * u, -10.2 * u); c.closePath(); c.fill(); c.stroke();
+      c.strokeStyle = '#f5c542'; c.lineWidth = 1.4 * u; c.beginPath(); c.moveTo(6.5 * u, 6 * u); c.lineTo(6.5 * u, -9 * u); c.stroke();
+      c.fillStyle = '#e0453a'; c.strokeStyle = OUT; c.lineWidth = 0.7 * u; c.beginPath(); c.arc(6.5 * u, -10.5 * u, 1.9 * u, 0, Math.PI * 2); c.fill(); c.stroke();
+    }
+    c.restore();
+  }
+  function drawHouse(c, x, y, u, big) {
+    c.save(); c.translate(x, y);
+    const k = big ? 1.15 : 0.9;
+    shadow(c, 0, 8.5 * u, u, 9 * k, 2.2);
+    c.lineWidth = Math.max(0.6, 0.85 * u); c.strokeStyle = OUT; c.lineJoin = 'round';
+    c.fillStyle = '#f7d24c'; c.beginPath(); c.rect(-7 * k * u, -1 * u, 14 * k * u, 9 * u); c.fill(); c.stroke();
+    c.fillStyle = '#f0a030'; c.beginPath(); c.moveTo(-9 * k * u, -1 * u); c.lineTo(-4.5 * k * u, -8 * u); c.lineTo(4.5 * k * u, -8 * u); c.lineTo(9 * k * u, -1 * u); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#7a4a1e'; c.beginPath(); c.roundRect(-2 * u, 2.5 * u, 4 * u, 5.5 * u, 1.2 * u); c.fill(); c.stroke();
+    if (big) {
+      c.fillStyle = '#e8ecf0';
+      for (const sx of [-6.5, 2.5]) {
+        c.beginPath(); c.rect(sx * u, -13 * u, 4 * u, 6 * u); c.fill(); c.stroke();
+        c.beginPath(); c.rect(sx * u - 0.6 * u, -14.5 * u, 1.6 * u, 2 * u); c.rect(sx * u + 1.6 * u, -14.5 * u, 1.6 * u, 2 * u); c.rect(sx * u + 3.4 * u, -14.5 * u, 1.2 * u, 2 * u); c.fill(); c.stroke();
+      }
+      c.fillStyle = '#7fb3ff'; c.beginPath(); c.arc(0, -4.5 * u, 1.6 * u, 0, Math.PI * 2); c.fill(); c.stroke();
+    } else {
+      c.fillStyle = '#7fb3ff'; c.beginPath(); c.rect(2.5 * u, 1.5 * u, 3 * u, 3 * u); c.fill(); c.stroke();
+    }
+    c.restore();
+  }
+  function drawTower(c, x, y, u, strong) {
+    c.save(); c.translate(x, y);
+    shadow(c, 0, 9.5 * u, u, 7, 2);
+    c.lineWidth = Math.max(0.6, 0.85 * u); c.strokeStyle = OUT; c.lineJoin = 'round';
+    const top = strong ? -10 : -6;
+    c.fillStyle = strong ? '#7f8791' : '#c3c7cd';
+    c.beginPath(); c.rect(-5.5 * u, top * u, 11 * u, (9 - top) * u); c.fill(); c.stroke();
+    for (let k = -1; k <= 1; k++) { c.beginPath(); c.rect(k * 4 * u - 1.6 * u, (top - 3.5) * u, 3.2 * u, 3.8 * u); c.fill(); c.stroke(); }
+    c.fillStyle = '#2b2f36'; c.beginPath(); c.roundRect(-1.4 * u, (top + 4) * u, 2.8 * u, 4 * u, 1.2 * u); c.fill();
+    c.fillStyle = '#7a4a1e'; c.beginPath(); c.moveTo(-2.4 * u, 9 * u); c.lineTo(-2.4 * u, 4 * u); c.arc(0, 4 * u, 2.4 * u, Math.PI, 0); c.lineTo(2.4 * u, 9 * u); c.closePath(); c.fill(); c.stroke();
+    if (strong) {
+      c.strokeStyle = '#3b2a1a'; c.lineWidth = 1 * u; c.beginPath(); c.moveTo(0, -13.5 * u); c.lineTo(0, -19.5 * u); c.stroke();
+      c.fillStyle = '#e0453a'; c.strokeStyle = OUT; c.lineWidth = 0.7 * u; c.beginPath(); c.moveTo(0, -19.5 * u); c.lineTo(6 * u, -17.5 * u); c.lineTo(0, -15.5 * u); c.closePath(); c.fill(); c.stroke();
+    }
+    c.restore();
+  }
+  function drawTree(c, x, y, u, type, seedish) {
+    c.save(); c.translate(x, y);
+    c.lineWidth = Math.max(0.5, 0.75 * u); c.strokeStyle = '#1f4a14'; c.lineJoin = 'round';
+    if (type === TREE.PINE) {
+      shadow(c, 0, 9 * u, u, 5.5, 1.8);
+      c.fillStyle = '#8b5a2b'; c.strokeStyle = OUT; c.beginPath(); c.rect(-1.3 * u, 4.5 * u, 2.6 * u, 4.5 * u); c.fill(); c.stroke();
+      c.strokeStyle = '#1f4a14';
+      c.fillStyle = '#5ad636'; c.beginPath(); c.moveTo(0, -3 * u); c.lineTo(7 * u, 6 * u); c.lineTo(-7 * u, 6 * u); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle = '#6ce33f'; c.beginPath(); c.moveTo(0, -12 * u); c.lineTo(5.2 * u, -1 * u); c.lineTo(-5.2 * u, -1 * u); c.closePath(); c.fill(); c.stroke();
+    } else if (type === TREE.PALM) {
+      shadow(c, 0, 9 * u, u, 5.5, 1.8);
+      c.strokeStyle = '#8b5a2b'; c.lineWidth = 2.2 * u; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(-1 * u, 9 * u); c.quadraticCurveTo(0, 0, 2.5 * u, -6 * u); c.stroke();
+      c.lineWidth = 0.7 * u; c.strokeStyle = '#1f4a14';
+      for (let k = 0; k < 5; k++) {
+        const ang = -Math.PI * 0.95 + k * (Math.PI * 0.95 / 4) + (seedish % 3) * 0.1;
+        c.save(); c.translate(2.5 * u, -6.5 * u); c.rotate(ang);
+        c.fillStyle = k % 2 ? '#4fc832' : '#66e03d'; c.beginPath(); c.ellipse(5 * u, 0, 5.5 * u, 1.9 * u, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+        c.restore();
+      }
+    } else if (type === TREE.GRAVE) {
+      shadow(c, 0, 8.5 * u, u, 5.5, 1.8);
+      c.fillStyle = '#b8bcc2'; c.strokeStyle = OUT;
+      c.beginPath(); c.moveTo(-4.2 * u, 8 * u); c.lineTo(-4.2 * u, -3 * u); c.arc(0, -3 * u, 4.2 * u, Math.PI, 0); c.lineTo(4.2 * u, 8 * u); c.closePath(); c.fill(); c.stroke();
+      c.strokeStyle = '#4a4e57'; c.lineWidth = 1.1 * u; c.beginPath(); c.moveTo(0, -4.5 * u); c.lineTo(0, 3.5 * u); c.moveTo(-2.4 * u, -2 * u); c.lineTo(2.4 * u, -2 * u); c.stroke();
+    }
+    c.restore();
+  }
+  function drawBuilding(c, x, y, u, bld) {
+    if (bld === BLD.CAPITAL) drawHouse(c, x, y + 1.5 * u, u, true);
+    else if (bld === BLD.FARM) drawHouse(c, x, y + 1.5 * u, u, false);
+    else if (bld === BLD.TOWER) drawTower(c, x, y, u, false);
+    else if (bld === BLD.STRONG) drawTower(c, x, y, u, true);
+  }
+  function drawBang(c, x, y, u) {
+    c.save(); c.translate(x, y);
+    c.font = 'bold ' + (13 * u) + 'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.lineWidth = 2.5 * u; c.strokeStyle = '#fff'; c.lineJoin = 'round'; c.strokeText('!', 0, 0);
+    c.fillStyle = '#e8352a'; c.fillText('!', 0, 0);
+    c.restore();
+  }
+  const iconCache = {};
+  function iconFor(kind, s) {
+    const key = kind + s;
+    if (iconCache[key]) return iconCache[key];
+    const size = 96, cv = document.createElement('canvas'); cv.width = size; cv.height = size;
+    const c = cv.getContext('2d'); const u = size / 40;
+    if (kind === 'unit') drawUnit(c, size / 2, size / 2 + 2 * u, u, s, 1);
+    else if (kind === 'tower') drawTower(c, size / 2, size / 2 + 2 * u, u, false);
+    else if (kind === 'strong') drawTower(c, size / 2, size / 2 + 4 * u, u, true);
+    else if (kind === 'farm') drawHouse(c, size / 2, size / 2 + 3 * u, u, false);
+    iconCache[key] = cv.toDataURL();
+    return iconCache[key];
+  }
+  let waterPattern = null;
+  function makeWaterPattern() {
+    const cv = document.createElement('canvas'); cv.width = 96; cv.height = 96;
+    const c = cv.getContext('2d');
+    c.fillStyle = WATER_COLOR; c.fillRect(0, 0, 96, 96);
+    let seed = 12345; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    for (let k = 0; k < 420; k++) { c.fillStyle = rnd() < 0.5 ? 'rgba(10,30,90,0.16)' : 'rgba(255,255,255,0.10)'; c.fillRect(Math.floor(rnd() * 96), Math.floor(rnd() * 96), 1 + (rnd() < 0.3 ? 1 : 0), 1); }
+    waterPattern = ctx.createPattern(cv, 'repeat');
+  }
+
+  /* ---------------- render ---------------- */
+  function render(ts) {
+    const w = geo.w, h = geo.h;
+    ctx.setTransform(geo.dpr, 0, 0, geo.dpr, 0, 0);
+    if (!waterPattern) makeWaterPattern();
+    ctx.fillStyle = waterPattern; ctx.fillRect(0, 0, w, h);
+    if (!state) return;
+    const H = state.hexes, nb = E.neighbors(state), R = geo.R;
+    const humanTurn = E.humanCanAct(state);
+    const selTerr = sel.terr >= 0 ? state.terrs[sel.terr] : null;
+    const minX = -R * 2, maxX = w + R * 2, minY = -R * 2, maxY = h + R * 2;
+    const vis = [];
+    const centers = new Map();
+    for (let i = 0; i < H.length; i++) {
+      if (!H[i].land) continue;
+      const [x, y] = hexCenter(i);
+      if (x > minX && x < maxX && y > minY && y < maxY) { vis.push(i); centers.set(i, [x, y]); }
+    }
+    // land thickness: dark band under the bottom edges (also shades the top of lakes)
+    ctx.fillStyle = 'rgba(15,35,75,0.75)';
+    ctx.beginPath();
+    for (const i of vis) { const [x, y] = centers.get(i); hexPath(ctx, x, y, R + 0.5, R * 0.22); }
+    ctx.fill();
+    // land fills grouped by colour
+    const groups = new Map();
+    for (const i of vis) { const o = H[i].owner; if (!groups.has(o)) groups.set(o, []); groups.get(o).push(i); }
+    for (const [o, list] of groups) {
+      ctx.fillStyle = o < 0 ? NEUTRAL_COLOR : (PLAYER_COLORS[o] || '#888');
+      ctx.beginPath();
+      for (const i of list) { const [x, y] = centers.get(i); hexPath(ctx, x, y, R + 0.55); }
+      ctx.fill();
+    }
+    // subtle grid on neutral land
+    ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = Math.max(0.5, R * 0.04);
+    ctx.beginPath();
+    for (const i of vis) {
+      if (H[i].owner >= 0) continue;
+      const [x, y] = centers.get(i);
+      for (let k = 0; k < 6; k++) { const j = nb[i][k]; if (j >= 0 && j < i && H[j].land && H[j].owner < 0) { const [ax, ay] = hexVertex(x, y, R, k), [bx, by] = hexVertex(x, y, R, k + 1); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); } }
+    }
+    ctx.stroke();
+    // province borders (between different owners / neutral)
+    ctx.strokeStyle = 'rgba(30,34,42,0.85)'; ctx.lineWidth = Math.max(1, R * 0.07); ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (const i of vis) {
+      const hx = H[i]; const [x, y] = centers.get(i);
+      for (let k = 0; k < 6; k++) {
+        const j = nb[i][k]; if (j < 0) continue;
+        const o = H[j]; if (!o.land || o.owner === hx.owner) continue;
+        if (j < i && centers.has(j)) continue;
+        const [ax, ay] = hexVertex(x, y, R + 0.3, k), [bx, by] = hexVertex(x, y, R + 0.3, k + 1);
+        ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      }
+    }
+    ctx.stroke();
+    // coast line
+    ctx.strokeStyle = 'rgba(15,30,60,0.95)'; ctx.lineWidth = Math.max(1.2, R * 0.09);
+    ctx.beginPath();
+    for (const i of vis) {
+      const [x, y] = centers.get(i);
+      for (let k = 0; k < 6; k++) {
+        const j = nb[i][k];
+        if (j >= 0 && H[j].land) continue;
+        const [ax, ay] = hexVertex(x, y, R + 0.3, k), [bx, by] = hexVertex(x, y, R + 0.3, k + 1);
+        ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      }
+    }
+    ctx.stroke();
+    // move / placement zone
+    if (sel.targets.length) {
+      const zone = new Set(sel.targets.map(tg => tg.to));
+      if (sel.unit >= 0) zone.add(sel.unit);
+      ctx.fillStyle = 'rgba(255,255,255,0.38)';
+      ctx.beginPath();
+      for (const i of zone) { if (!centers.has(i)) continue; const [x, y] = centers.get(i); hexPath(ctx, x, y, R + 0.3); }
+      ctx.fill();
+      ctx.strokeStyle = '#ff8fd6'; ctx.lineWidth = Math.max(1.5, R * 0.11); ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (const i of zone) {
+        if (!centers.has(i)) continue;
+        const [x, y] = centers.get(i);
+        for (let k = 0; k < 6; k++) { const j = nb[i][k]; if (j >= 0 && zone.has(j)) continue; const [ax, ay] = hexVertex(x, y, R - 0.6, k), [bx, by] = hexVertex(x, y, R - 0.6, k + 1); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); }
+      }
+      ctx.stroke();
+    }
+    // selected province outline
+    if (selTerr) {
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(2, R * 0.13); ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (const i of selTerr.hexes) {
+        if (!centers.has(i)) continue;
+        const [x, y] = centers.get(i);
+        for (let k = 0; k < 6; k++) { const j = nb[i][k]; if (j >= 0 && H[j].land && H[j].terr === selTerr.id) continue; const [ax, ay] = hexVertex(x, y, R - 0.8, k), [bx, by] = hexVertex(x, y, R - 0.8, k + 1); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); }
+      }
+      ctx.stroke();
+    }
+    // objects
+    const u = R / 24;
+    const p = state.humanIdx;
+    for (const i of vis) {
+      const hx = H[i]; const [x, y] = centers.get(i);
+      const isDragged = drag.active && drag.from === i;
+      if (hx.tree) drawTree(ctx, x, y, u, hx.tree, i);
+      if (hx.bld) drawBuilding(ctx, x, y, u, hx.bld);
+      if (hx.unit && !isDragged) {
+        const alpha = (hx.unit.moved && hx.owner === state.current) ? 0.55 : 1;
+        drawUnit(ctx, x, y + 1.5 * u, u, hx.unit.s, alpha);
+        if (prefs.showNum) {
+          ctx.save(); ctx.globalAlpha = alpha;
+          ctx.fillStyle = 'rgba(20,24,34,0.85)'; ctx.beginPath(); ctx.arc(x + 8.5 * u, y + 8 * u, 4.4 * u, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.max(7, 7 * u) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(String(hx.unit.s), x + 8.5 * u, y + 8.3 * u);
+          ctx.restore();
+        }
+      }
+    }
+    // "!" on capitals of the human's provinces that can still act
+    if (humanTurn) {
+      for (const T of E.playerTerritories(state, p)) {
+        if (!centers.has(T.capital) || !provinceHasWork(T)) continue;
+        const [x, y] = centers.get(T.capital);
+        drawBang(ctx, x - 7 * u, y - 14 * u, u);
+      }
+    }
+    // name label of the selected province
+    if (selTerr && centers.has(selTerr.capital)) {
+      const [x, y] = centers.get(selTerr.capital);
+      const fs = Math.max(11, Math.min(20, R * 0.72));
+      ctx.font = '500 ' + fs + 'px sans-serif';
+      const name = selTerr.name || '';
+      const tw = ctx.measureText(name).width + fs * 1.1;
+      const bx = x - tw / 2, by = y - R * 1.35 - fs * 1.4, bh = fs * 1.5;
+      ctx.fillStyle = 'rgba(20,24,20,0.88)';
+      ctx.beginPath(); ctx.roundRect(bx, by, tw, bh, 3); ctx.fill();
+      ctx.strokeStyle = PLAYER_COLORS[selTerr.owner]; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - fs * 0.35, by + bh); ctx.lineTo(x + fs * 0.35, by + bh); ctx.lineTo(x, by + bh + fs * 0.4); ctx.closePath(); ctx.fillStyle = 'rgba(20,24,20,0.88)'; ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(name, x, by + bh / 2 + 0.5);
+    }
+    // flash of the last AI action
+    if (flash.hex >= 0) {
+      const age = performance.now() - flash.t;
+      if (age < 600 && centers.has(flash.hex)) {
+        const [x, y] = centers.get(flash.hex);
+        ctx.strokeStyle = 'rgba(255,255,255,' + (1 - age / 600).toFixed(2) + ')'; ctx.lineWidth = Math.max(2, R * 0.2);
+        ctx.beginPath(); hexPath(ctx, x, y, R - 1); ctx.stroke();
+      } else flash.hex = -1;
+    }
+    // selected unit ring
+    if (sel.unit >= 0 && !drag.active && centers.has(sel.unit)) {
+      const [x, y] = centers.get(sel.unit);
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = Math.max(2, R * 0.14);
+      ctx.beginPath(); hexPath(ctx, x, y, R - 1); ctx.stroke();
+    }
+    if (drag.active && drag.from >= 0 && H[drag.from].unit) drawUnit(ctx, drag.x, drag.y - 8 * u, u * 1.15, H[drag.from].unit.s, 0.92);
+  }
+  function frame(ts) {
+    const animating = flash.hex >= 0 || drag.active;
+    if (dirty || animating) { dirty = false; render(ts || 0); }
+    requestAnimationFrame(frame);
+  }
+  function provinceHasWork(T) {
+    for (const i of T.hexes) { const u = state.hexes[i].unit; if (u && !u.moved) return true; }
+    return T.gold >= UNIT_COST[1];
+  }
+
+  /* ---------------- selection ---------------- */
+  function setTargets(list) { sel.targets = list || []; sel.targetMap = new Map(); for (const tg of sel.targets) sel.targetMap.set(tg.to, tg); requestRender(); }
+  function clearSel(keepTerr) {
+    sel.unit = -1; sel.placing = null; setTargets([]); sel.inspect = -1;
+    if (!keepTerr) sel.terr = -1;
+    updateHud();
+  }
+  function ensureVisible(i) {
+    requestAnimationFrame(() => {
+      if (!state || i < 0) return;
+      const [x, y] = hexCenter(i);
+      const R = geo.R, m = R * 1.6, top = 70, bot = 90;
+      let dx = 0, dy = 0;
+      if (y > geo.h - bot - m) dy = (geo.h - bot - m) - y;
+      if (y < top + m) dy = (top + m) - y;
+      if (x < m) dx = m - x;
+      if (x > geo.w - m) dx = geo.w - m - x;
+      if (dx || dy) { view.tx += dx; view.ty += dy; applyView(); }
+    });
+  }
+  function selectTerritory(i) {
+    const h = state.hexes[i];
+    sel.unit = -1; sel.placing = null; setTargets([]); sel.inspect = -1;
+    sel.terr = (h.terr >= 0 && h.owner === state.humanIdx) ? h.terr : -1;
+    if (sel.terr < 0) sel.inspect = i;
+    updateHud();
+    ensureVisible(i);
+  }
+  function selectUnit(i) {
+    sel.placing = null; sel.inspect = -1;
+    sel.unit = i; sel.terr = state.hexes[i].terr;
+    setTargets(E.unitTargets(state, i));
+    updateHud();
+    ensureVisible(i);
+  }
+  function inspectHex(i) { sel.unit = -1; sel.placing = null; setTargets([]); sel.terr = -1; sel.inspect = i; updateHud(); }
+  function hexDescription(i) {
+    const h = state.hexes[i];
+    if (!h.land) return { dot: null, text: t('sea') };
+    const parts = [];
+    if (h.terr >= 0 && state.terrs[h.terr]) parts.push(`${state.terrs[h.terr].name} · ${state.terrs[h.terr].hexes.length} ${t('hexes')}`);
+    if (h.unit) parts.push(`${t('unit')[h.unit.s]}${h.owner === state.current ? ' (' + (h.unit.moved ? t('tired') : t('ready')) + ')' : ''}`);
+    if (h.bld === BLD.CAPITAL) parts.push(t('capital'));
+    if (h.bld === BLD.TOWER) parts.push(t('tower'));
+    if (h.bld === BLD.STRONG) parts.push(t('strong'));
+    if (h.bld === BLD.FARM) parts.push(t('farm'));
+    if (h.tree === TREE.PINE) parts.push(t('pine'));
+    if (h.tree === TREE.PALM) parts.push(t('palm'));
+    if (h.tree === TREE.GRAVE) parts.push(t('grave'));
+    parts.push(`${t('defense')} ${E.defense(state, i)}`);
+    return { dot: h.owner < 0 ? NEUTRAL_COLOR : PLAYER_COLORS[h.owner], text: playerName(h.owner) + ' · ' + parts.join(' · ') };
+  }
+  const BUILD_KINDS = ['farm', 'tower', 'strong'];
+  function availableBuilds() {
+    const R = E.rulesOf(state), out = [];
+    for (const k of BUILD_KINDS) {
+      if (k === 'farm' && !R.farms) continue;
+      if (k === 'strong' && !R.strongTower) continue;
+      out.push(k);
+    }
+    return out;
+  }
+  function cycleBuild() {
+    if (sel.terr < 0) return; const T = state.terrs[sel.terr]; if (!T) return;
+    const kinds = availableBuilds();
+    let idx = sel.placing && sel.placing.kind !== 'unit' ? kinds.indexOf(sel.placing.kind) : -1;
+    for (let n = 0; n <= kinds.length; n++) {
+      idx = (idx + 1) % (kinds.length + 1);
+      if (idx === kinds.length) { if (sel.placing && sel.placing.kind !== 'unit') { sel.placing = null; setTargets([]); updateHud(); return; } continue; }
+      const k = kinds[idx];
+      if (T.gold >= E.buildingCost(state, T, k) && E.placementTargets(state, sel.terr, k).length) { startPlacing(k, 0); return; }
+    }
+    sel.placing = null; setTargets([]); updateHud();
+    const lbl = $('priceLbl'); lbl.textContent = '$' + E.buildingCost(state, T, kinds[0]); lbl.classList.add('no');
+    toast(t('notEnough'), 1200);
+  }
+  function cycleUnit() {
+    if (sel.terr < 0) return; const T = state.terrs[sel.terr]; if (!T) return;
+    let lv = sel.placing && sel.placing.kind === 'unit' ? sel.placing.s : 0;
+    for (let n = 0; n <= 4; n++) {
+      lv = (lv % 5) + 1;
+      if (lv === 5) { if (sel.placing && sel.placing.kind === 'unit') { sel.placing = null; setTargets([]); updateHud(); return; } continue; }
+      if (T.gold >= UNIT_COST[lv]) { startPlacing('unit', lv); return; }
+    }
+    sel.placing = null; setTargets([]); updateHud();
+    const lbl = $('priceLbl'); lbl.textContent = '$' + UNIT_COST[1]; lbl.classList.add('no');
+    toast(t('notEnough'), 1200);
+  }
+  function startPlacing(kind, s) {
+    if (sel.terr < 0) return;
+    const T = state.terrs[sel.terr]; if (!T) return;
+    const cost = kind === 'unit' ? UNIT_COST[s] : E.buildingCost(state, T, kind);
+    if (T.gold < cost) return;
+    sel.unit = -1; sel.inspect = -1;
+    sel.placing = { kind, s };
+    setTargets(E.placementTargets(state, sel.terr, kind, s));
+    updateHud();
+  }
+
+  /* ---------------- human actions ---------------- */
+  function pushUndo() { undoStack.push(JSON.stringify(state)); if (undoStack.length > 60) undoStack.shift(); }
+  function doUndo() {
+    if (!undoStack.length || !E.humanCanAct(state)) return;
+    state = JSON.parse(undoStack.pop());
+    clearSel(false); saveGame(); updateHud();
+  }
+  function afterHumanAction() { saveGame(); updateHud(); requestRender(); if (state.gameOver) showEnd(); }
+  function tryMove(from, to) {
+    const tg = sel.targetMap.get(to);
+    if (!tg) return false;
+    pushUndo();
+    const r = E.moveUnit(state, from, to);
+    if (!r.ok) { undoStack.pop(); return false; }
+    const g = state.hexes[to];
+    const keep = (g.terr >= 0 && g.owner === state.humanIdx) ? g.terr : sel.terr;
+    sel.unit = -1; setTargets([]);
+    sel.terr = state.terrs[keep] ? keep : -1;
+    afterHumanAction();
+    return true;
+  }
+  function tryPlace(to) {
+    const tg = sel.targetMap.get(to);
+    if (!tg || !sel.placing) return false;
+    pushUndo();
+    const r = sel.placing.kind === 'unit' ? E.buyUnit(state, sel.terr, sel.placing.s, to) : E.buyBuilding(state, sel.terr, sel.placing.kind, to);
+    if (!r.ok) { undoStack.pop(); return false; }
+    const g = state.hexes[to];
+    const keepTerr = (g.terr >= 0 && g.owner === state.humanIdx) ? g.terr : sel.terr;
+    const again = sel.placing;
+    sel.placing = null; setTargets([]);
+    sel.terr = state.terrs[keepTerr] ? keepTerr : -1;
+    if (again && sel.terr >= 0) {   // keep the same tool active while affordable
+      const T = state.terrs[sel.terr];
+      const cost = again.kind === 'unit' ? UNIT_COST[again.s] : E.buildingCost(state, T, again.kind);
+      if (T.gold >= cost) { const tl = E.placementTargets(state, sel.terr, again.kind, again.s); if (tl.length) { sel.placing = again; setTargets(tl); } }
+    }
+    afterHumanAction();
+    return true;
+  }
+  function onHexClick(i) {
+    if (!state || !E.humanCanAct(state)) return;
+    if (i < 0 || !state.hexes[i].land) { clearSel(false); return; }
+    const h = state.hexes[i];
+    if (sel.placing) {
+      if (tryPlace(i)) return;
+      sel.placing = null; setTargets([]);
+      if (h.owner === state.humanIdx) { if (h.unit && !h.unit.moved && h.terr >= 0) selectUnit(i); else selectTerritory(i); }
+      else inspectHex(i);
+      return;
+    }
+    if (sel.unit >= 0) {
+      if (i === sel.unit) { const terr = state.hexes[i].terr; sel.unit = -1; setTargets([]); sel.terr = terr; updateHud(); return; }
+      if (tryMove(sel.unit, i)) return;
+    }
+    if (h.owner === state.humanIdx) {
+      if (h.unit && !h.unit.moved && h.terr >= 0) selectUnit(i);
+      else selectTerritory(i);
+    } else inspectHex(i);
+  }
+  function humanEndTurn() {
+    if (!state || !E.humanCanAct(state)) return;
+    clearSel(false);
+    undoStack = [];
+    humanSnapshot = snapshotHuman();
+    E.endTurn(state);
+    saveGame();
+    afterTurnChange();
+  }
+  function snapshotHuman() {
+    const p = state.humanIdx; let hexes = 0;
+    for (const h of state.hexes) if (h.land && h.owner === p) hexes++;
+    return { hexes, logLen: state.log.length };
+  }
+
+  /* ---------------- turn flow / AI ---------------- */
+  function afterTurnChange() {
+    updateHud(); requestRender();
+    if (state.gameOver) { showEnd(); return; }
+    const pl = state.players[state.current];
+    if (pl.ai) scheduleAI(30);
+    else { fastForward = false; onHumanTurnStart(); }
+  }
+  function onHumanTurnStart() {
+    const p = state.humanIdx; const msgs = [];
+    if (humanSnapshot) {
+      const events = state.log.slice(humanSnapshot.logLen);
+      let capLost = 0, capGold = 0, killed = 0; const elims = [];
+      for (const ev of events) {
+        if (ev.type === 'capital' && ev.owner === p) { capLost++; capGold += ev.gold || 0; }
+        if ((ev.type === 'kill' || ev.type === 'die') && ev.owner === p) killed++;
+        if (ev.type === 'eliminated') elims.push(ev.player);
+      }
+      const now = snapshotHuman();
+      const lost = humanSnapshot.hexes - now.hexes;
+      if (lost > 0) msgs.push(t('hexesLostMsg', lost, lost === 1 ? t('hexOne') : t('hexMany')));
+      if (capLost) msgs.push(t('capitalLostMsg', capGold));
+      if (killed) msgs.push(t('unitLostMsg', killed));
+      for (const e of elims) msgs.push(t('elimMsg', playerName(e)));
+    }
+    for (const ev of state.turnEvents) if (ev.type === 'starve') { msgs.push(t('starveMsg')); break; }
+    humanSnapshot = null;
+    if (msgs.length) toast(msgs.join('\n'), 3000 + 800 * msgs.length);
+    saveGame(); updateHud();
+  }
+  function scheduleAI(delay) { clearTimeout(aiTimer); aiRunning = true; aiTimer = setTimeout(aiStep, delay); updateHud(); }
+  function actionDelay(a) {
+    if (fastForward || prefs.speed === 'instant') return 0;
+    const base = prefs.speed === 'fast' ? 0.12 : 0.6;
+    if (a.type === 'move' && a.kind === 'merge') return 160 * base;
+    if (a.type === 'build') return 220 * base;
+    if (a.type === 'reposition') return 80 * base;
+    return 260 * base;
+  }
+  function aiStep() {
+    if (!state || state.gameOver) { aiRunning = false; updateHud(); return; }
+    aiRunning = true;
+    let guard = 0;
+    const t0 = performance.now();
+    while (guard++ < 5000) {
+      const p = state.current;
+      if (!state.players[p].ai) { aiRunning = false; afterTurnChange(); return; }
+      const a = AI.nextAction(state, p);
+      if (!a) {
+        E.endTurn(state);
+        if (state.gameOver) { aiRunning = false; updateHud(); requestRender(); showEnd(); return; }
+        if (!state.players[state.current].ai) { aiRunning = false; afterTurnChange(); return; }
+        if (humanEliminatedPause()) return;
+        const d = (fastForward || prefs.speed === 'instant') ? 0 : (prefs.speed === 'fast' ? 120 : 300);
+        if (d) { updateHud(); requestRender(); aiTimer = setTimeout(aiStep, d); return; }
+        continue;
+      }
+      const r = E.applyAction(state, a);
+      if (!r.ok) { console.warn('AI illegal action', a, r); E.endTurn(state); continue; }
+      a.kind = r.kind;
+      if (state.gameOver) { aiRunning = false; updateHud(); requestRender(); showEnd(); return; }
+      if (humanEliminatedPause()) return;
+      const d = actionDelay(a);
+      if (d > 0) { flash.hex = a.to; flash.t = performance.now(); requestRender(); aiTimer = setTimeout(aiStep, d); return; }
+      if (performance.now() - t0 > 40) { requestRender(); aiTimer = setTimeout(aiStep, 0); return; }
+    }
+    aiTimer = setTimeout(aiStep, 0);
+  }
+  function humanEliminatedPause() {
+    if (spectating || elimNoticed || state.players[state.humanIdx].alive) return false;
+    elimNoticed = true; aiRunning = false;
+    updateHud(); requestRender(); showEnd();
+    return true;
+  }
+
+  /* ---------------- HUD ---------------- */
+  function toast(text, ms) {
+    const el = $('toast');
+    el.textContent = text; el.classList.remove('hidden'); el.classList.remove('fade');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.classList.add('fade'); setTimeout(() => el.classList.add('hidden'), 350); }, ms || 3000);
+  }
+  function updateHud() {
+    requestRender();
+    if (!state) return;
+    const p = state.humanIdx, humanTurn = E.humanCanAct(state), cur = state.current;
+    const T = sel.terr >= 0 ? state.terrs[sel.terr] : null;
+    const tl = $('topLeft'), tc = $('topCenter');
+    if (T && T.owner === p) {
+      const inc = E.income(state, T), wag = E.wages(state, T), net = inc - wag;
+      tl.classList.remove('hidden'); $('moneyVal').textContent = T.gold;
+      tc.classList.remove('hidden'); $('incomeVal').textContent = (net >= 0 ? '+' : '') + net; tc.classList.toggle('neg', net < 0 || T.gold + net < 0);
+    } else { tl.classList.add('hidden'); tc.classList.add('hidden'); }
+    const bar = $('buildBar'), ghost = $('ghost'), price = $('priceLbl');
+    price.classList.remove('no');
+    if (T && T.owner === p && humanTurn) {
+      bar.classList.remove('hidden');
+      const kinds = availableBuilds();
+      const bkind = sel.placing && sel.placing.kind !== 'unit' ? sel.placing.kind : kinds[0];
+      $('buildImg').src = iconFor(bkind, 0);
+      const ulv = sel.placing && sel.placing.kind === 'unit' ? sel.placing.s : 1;
+      $('unitImg').src = iconFor('unit', ulv);
+      $('btnBuild').classList.toggle('active', !!(sel.placing && sel.placing.kind !== 'unit'));
+      $('btnUnit').classList.toggle('active', !!(sel.placing && sel.placing.kind === 'unit'));
+      if (sel.placing) {
+        const cost = sel.placing.kind === 'unit' ? UNIT_COST[sel.placing.s] : E.buildingCost(state, T, sel.placing.kind);
+        price.textContent = '$' + cost;
+        ghost.classList.remove('hidden');
+        $('ghostImg').src = sel.placing.kind === 'unit' ? iconFor('unit', sel.placing.s) : iconFor(sel.placing.kind, 0);
+        let gl;
+        if (sel.placing.kind === 'unit') gl = `${t('unit')[sel.placing.s]} · ${t('lvl')} ${sel.placing.s} · −${UNIT_WAGE[sel.placing.s]}${t('perTurn')}`;
+        else if (sel.placing.kind === 'farm') gl = `${t('farm')} · +${E.FARM_INCOME}${t('perTurn')} · ${t('farmRule')}`;
+        else gl = `${sel.placing.kind === 'tower' ? t('tower') : t('strong')} · ${t('defense')} ${sel.placing.kind === 'tower' ? 2 : 3}`;
+        $('ghostLbl').textContent = gl;
+      } else { price.textContent = ''; ghost.classList.add('hidden'); }
+    } else { bar.classList.add('hidden'); ghost.classList.add('hidden'); }
+    const info = $('infoLbl');
+    if (sel.inspect >= 0 && state.hexes[sel.inspect]) {
+      const d = hexDescription(sel.inspect);
+      info.innerHTML = (d.dot ? `<span class="dot" style="background:${d.dot}"></span>` : '') + `<span>${d.text}</span>`;
+      info.classList.remove('hidden');
+    } else info.classList.add('hidden');
+    const banner = $('banner');
+    if (!state.gameOver && (aiRunning || state.players[cur].ai)) {
+      banner.innerHTML = `<span class="dot" style="background:${PLAYER_COLORS[cur]}"></span><span>${t('aiTurn', t('colors')[cur])}</span>`; banner.classList.remove('hidden');
+    } else if (spectating && !state.gameOver) { banner.textContent = t('spectating'); banner.classList.remove('hidden'); }
+    else banner.classList.add('hidden');
+    const be = $('btnEnd');
+    be.disabled = !humanTurn;
+    let idle = humanTurn;
+    if (humanTurn) for (const T2 of E.playerTerritories(state, p)) if (provinceHasWork(T2)) { idle = false; break; }
+    be.classList.toggle('attention', humanTurn && idle);
+    $('btnUndo').disabled = !humanTurn || !undoStack.length;
+    canvas.style.cursor = humanTurn ? 'default' : 'progress';
+  }
+
+  /* ---------------- screens ---------------- */
+  const setup = { diff: 1, size: 1, players: 2, rules: 0, lang: 0 };
+  function sliderDef(key) {
+    switch (key) {
+      case 'diff': return { label: t('difficulty'), values: t('diffVals'), n: 3 };
+      case 'size': return { label: t('mapSize'), values: t('sizeVals'), n: 4 };
+      case 'players': return { label: t('players'), values: [2, 3, 4, 5, 6, 7, 8].map(n => t('playersVal')(n)), n: 7 };
+      case 'rules': return { label: t('rulesLbl'), values: t('rulesVals'), n: 2 };
+      case 'lang': return { label: t('lang'), values: t('langVals'), n: 2 };
+    }
+    return { label: key, values: [], n: 0 };
+  }
+  function renderSliders() {
+    for (const el of document.querySelectorAll('#ovSetup .slider')) {
+      const key = el.dataset.key, def = sliderDef(key), idx = Math.min(setup[key], def.n - 1);
+      let dots = '';
+      for (let k = 0; k < def.n; k++) dots += `<span class="dot${k === idx ? ' sel' : ''}" data-i="${k}" style="left:${(def.n === 1 ? 50 : (k / (def.n - 1)) * 100)}%"></span>`;
+      el.innerHTML = `<div class="lbl"><span>${def.label}</span><span class="val">${def.values[idx]}</span></div><div class="track">${dots}</div>`;
+      for (const d of el.querySelectorAll('.dot')) d.addEventListener('click', () => { setup[key] = parseInt(d.dataset.i, 10); if (key === 'lang') { lang = LANG_KEYS[setup.lang]; prefs.lang = lang; savePrefs(); applyStaticTexts(); } renderSliders(); });
+    }
+    $('lblSeed').textContent = t('seed');
+    $('btnStart').textContent = t('start');
+  }
+  function applyStaticTexts() {
+    $('btnResume').textContent = t('resume'); $('btnNew').textContent = t('newGame'); $('btnRules').textContent = t('rules');
+    $('lblSpeed').textContent = t('speed'); const so = $('selSpeed').options; SPEED_KEYS.forEach((k, i) => { so[i].textContent = t('spVals')[i]; });
+    $('lblNum').textContent = t('showNum');
+    $('rulesTitle').textContent = t('rules'); $('btnRulesClose').textContent = t('close');
+    $('btnEndNew').textContent = t('newGame'); $('btnWatch').textContent = t('watch');
+    $('btnUndo').title = t('undo'); $('btnEnd').title = t('endTurn');
+    document.documentElement.lang = lang;
+    renderSliders();
+    if (state) updateHud();
+  }
+  function showSetup() {
+    setup.diff = Math.max(0, DIFF_KEYS.indexOf(prefs.diff)); setup.size = Math.max(0, SIZE_KEYS.indexOf(prefs.size));
+    setup.players = Math.max(0, Math.min(6, (prefs.players | 0) - 2)); setup.rules = Math.max(0, RULE_KEYS.indexOf(prefs.rules)); setup.lang = Math.max(0, LANG_KEYS.indexOf(lang));
+    renderSliders();
+    $('btnSetupBack').classList.toggle('hidden', !state && !loadGame());
+    $('ovMenu').classList.add('hidden'); $('ovSetup').classList.remove('hidden');
+  }
+  function showMenu() {
+    const saved = loadGame();
+    $('btnResume').disabled = !(state || saved);
+    let sh = '';
+    if (state) {
+      sh += `<div class="row"><span>${t('round')} ${state.round}</span></div>`;
+      for (const pl of state.players) {
+        const cls = (pl.alive ? '' : ' dead') + (pl.id === state.current ? ' cur' : '');
+        sh += `<div class="row${cls}"><span class="dot" style="background:${PLAYER_COLORS[pl.id]}"></span><span>${playerName(pl.id)}</span><span class="n">${pl.alive ? E.hexCount(state, pl.id) + ' ' + t('hexes') : t('eliminated')}</span></div>`;
+      }
+    }
+    $('stats').innerHTML = sh;
+    $('selSpeed').value = prefs.speed; $('chkNum').checked = !!prefs.showNum;
+    $('ovSetup').classList.add('hidden'); $('ovMenu').classList.remove('hidden');
+  }
+  function hideScreens() {
+    $('ovMenu').classList.add('hidden'); $('ovSetup').classList.add('hidden'); $('ovRules').classList.add('hidden');
+    if (state && !state.gameOver && state.players[state.current].ai && !aiRunning) {
+      if (!state.players[state.humanIdx].alive) spectating = true;
+      scheduleAI(0);
+    }
+    requestRender();
+  }
+  function showRules() {
+    const R = state ? E.rulesOf(state) : (E.RULESETS[RULE_KEYS[setup.rules]] || E.RULESETS.antiyoy);
+    $('rulesBody').innerHTML = (RULES[lang] || RULES.it)(R);
+    $('ovRules').classList.remove('hidden');
+  }
+  function showEnd() {
+    if (!state) return;
+    const p = state.humanIdx; let title, text;
+    if (state.gameOver) {
+      if (state.winner === p) { title = t('win'); text = t('winText', state.round); }
+      else { title = t('aiWin'); text = t('aiWinText', playerName(state.winner)); }
+      $('btnWatch').classList.add('hidden');
+    } else { title = t('lose'); text = t('loseText'); $('btnWatch').classList.remove('hidden'); }
+    $('endTitle').textContent = title; $('endText').textContent = text;
+    $('ovEnd').classList.remove('hidden');
+    saveGame();
+  }
+  function newGame() {
+    clearTimeout(aiTimer); aiRunning = false; fastForward = false; spectating = false; elimNoticed = false;
+    prefs.diff = DIFF_KEYS[setup.diff]; prefs.size = SIZE_KEYS[setup.size]; prefs.players = setup.players + 2; prefs.rules = RULE_KEYS[setup.rules];
+    lang = LANG_KEYS[setup.lang]; prefs.lang = lang; savePrefs(); applyStaticTexts();
+    const seedStr = $('optSeed').value.trim();
+    const seed = seedStr === '' ? undefined : (isNaN(seedStr) ? hashStr(seedStr) : parseInt(seedStr, 10));
+    state = E.createGame({ players: prefs.players, size: prefs.size, seed, humanIdx: 0, aiLevel: prefs.diff, rules: prefs.rules });
+    undoStack = []; humanSnapshot = null;
+    clearSel(false);
+    hideScreens(); $('ovEnd').classList.add('hidden');
+    resetView(); layout();
+    const T0 = E.playerTerritories(state, state.humanIdx)[0];
+    if (T0) {
+      const [x, y] = hexCenter(T0.capital); const cx = geo.vx + geo.vw / 2, cy = geo.vy + geo.vh / 2;
+      if (Math.abs(x - cx) > geo.vw / 2 - 40 || Math.abs(y - cy) > geo.vh / 2 - 60) { view.tx += cx - x; view.ty += cy - y; applyView(); }
+    }
+    saveGame();
+    afterTurnChange();
+  }
+  function continueGame() {
+    const saved = loadGame(); if (!saved) return;
+    clearTimeout(aiTimer); aiRunning = false; fastForward = false; elimNoticed = false;
+    state = saved.state; spectating = !!saved.spectating;
+    if (!state.rules) state.rules = Object.assign({}, E.RULESETS.antiyoy);
+    undoStack = []; humanSnapshot = null;
+    clearSel(false); hideScreens(); $('ovEnd').classList.add('hidden');
+    resetView(); layout();
+    afterTurnChange();
+  }
+  function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+
+  /* ---------------- input ---------------- */
+  function canvasPos(ev) { const r = canvas.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; }
+  const pointers = new Map();
+  const pan = { active: false, lastX: 0, lastY: 0, startX: 0, startY: 0, moved: false, pinch: null };
+  function pinchInfo() {
+    const pts = [...pointers.values()];
+    if (pts.length < 2) return null;
+    const dx = pts[1].x - pts[0].x, dy = pts[1].y - pts[0].y;
+    return { dist: Math.hypot(dx, dy) || 1, mx: (pts[0].x + pts[1].x) / 2, my: (pts[0].y + pts[1].y) / 2 };
+  }
+  canvas.addEventListener('pointerdown', (ev) => {
+    if (!state) return;
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    const [x, y] = canvasPos(ev);
+    pointers.set(ev.pointerId, { x, y });
+    try { canvas.setPointerCapture(ev.pointerId); } catch (e) { }
+    if (pointers.size >= 2) { drag.from = -1; drag.active = false; pan.pinch = pinchInfo(); pan.active = false; pan.moved = true; return; }
+    const i = pixelToHex(x, y);
+    pan.startX = x; pan.startY = y; pan.lastX = x; pan.lastY = y; pan.moved = false; pan.active = false; pan.pinch = null;
+    drag.from = -1; drag.active = false; drag.startX = x; drag.startY = y; drag.x = x; drag.y = y;
+    if (!E.humanCanAct(state)) { fastForward = true; return; }
+    const h = i >= 0 ? state.hexes[i] : null;
+    const isTarget = i >= 0 && sel.targetMap.has(i) && (sel.unit >= 0 || sel.placing);
+    if (!isTarget && h && h.land && h.owner === state.humanIdx && h.unit && !h.unit.moved && h.terr >= 0 && !sel.placing) {
+      drag.from = i;
+      if (sel.unit !== i) selectUnit(i);
+    }
+  });
+  canvas.addEventListener('pointermove', (ev) => {
+    if (!state) return;
+    const [x, y] = canvasPos(ev);
+    if (pointers.has(ev.pointerId)) pointers.set(ev.pointerId, { x, y });
+    if (pointers.size >= 2 && pan.pinch) {
+      const now = pinchInfo();
+      if (now) { zoomAt(now.mx, now.my, now.dist / pan.pinch.dist); view.tx += now.mx - pan.pinch.mx; view.ty += now.my - pan.pinch.my; applyView(); pan.pinch = now; }
+      return;
+    }
+    const i = pixelToHex(x, y);
+    if (i !== hover) hover = i;
+    if (drag.from >= 0) {
+      drag.x = x; drag.y = y;
+      if (!drag.active && Math.hypot(x - drag.startX, y - drag.startY) > 8) drag.active = true;
+      if (drag.active) requestRender();
+      return;
+    }
+    if (pointers.has(ev.pointerId)) {
+      if (!pan.active && Math.hypot(x - pan.startX, y - pan.startY) > 8) { pan.active = true; pan.moved = true; canvas.style.cursor = 'grabbing'; }
+      if (pan.active) { view.tx += x - pan.lastX; view.ty += y - pan.lastY; applyView(); }
+      pan.lastX = x; pan.lastY = y;
+    }
+  });
+  function endPointer(ev) {
+    if (!state) return;
+    const [x, y] = canvasPos(ev);
+    const wasPinch = pointers.size >= 2;
+    pointers.delete(ev.pointerId);
+    try { canvas.releasePointerCapture(ev.pointerId); } catch (e) { }
+    if (wasPinch) { pan.pinch = pointers.size >= 2 ? pinchInfo() : null; if (pointers.size < 2) pan.moved = true; return; }
+    const i = pixelToHex(x, y);
+    if (drag.from >= 0) {
+      const from = drag.from, wasDrag = drag.active;
+      drag.from = -1; drag.active = false; requestRender();
+      if (wasDrag && i >= 0 && i !== from && sel.unit === from) tryMove(from, i);
+      return;
+    }
+    const panned = pan.active || pan.moved;
+    pan.active = false; pan.moved = false; pan.pinch = null;
+    if (panned) { canvas.style.cursor = 'default'; return; }
+    if (!E.humanCanAct(state)) return;
+    onHexClick(i);
+  }
+  canvas.addEventListener('pointerup', endPointer);
+  canvas.addEventListener('pointercancel', (ev) => { pointers.delete(ev.pointerId); drag.from = -1; drag.active = false; pan.active = false; pan.pinch = null; requestRender(); });
+  canvas.addEventListener('wheel', (ev) => { if (!state) return; ev.preventDefault(); const [x, y] = canvasPos(ev); zoomAt(x, y, Math.exp(-ev.deltaY * 0.0015)); }, { passive: false });
+  canvas.addEventListener('dblclick', (ev) => { ev.preventDefault(); const [x, y] = canvasPos(ev); const i = pixelToHex(x, y); if (i < 0 || !state.hexes[i].land) resetView(); });
+  canvas.addEventListener('contextmenu', (ev) => { ev.preventDefault(); if (state && E.humanCanAct(state)) { if (sel.placing || sel.unit >= 0) clearSel(true); else clearSel(false); } });
+  window.addEventListener('keydown', (ev) => {
+    if (!state) return;
+    const tag = (ev.target && ev.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    const screenOpen = !$('ovMenu').classList.contains('hidden') || !$('ovSetup').classList.contains('hidden') || !$('ovRules').classList.contains('hidden');
+    if (screenOpen) { if (ev.key === 'Escape') hideScreens(); return; }
+    if (ev.key === 'Escape') { if (sel.placing || sel.unit >= 0) clearSel(true); else clearSel(false); }
+    else if (ev.key === 'Enter' || ev.key === ' ') { if (E.humanCanAct(state)) { ev.preventDefault(); humanEndTurn(); } else fastForward = true; }
+    else if (ev.key === 'z' || ev.key === 'Z' || ev.key === 'u' || ev.key === 'U') doUndo();
+  });
+  window.addEventListener('resize', () => { const s = view.scale, tx = view.tx, ty = view.ty; layout(); view.scale = s; view.tx = tx; view.ty = ty; applyView(); });
+
+  $('btnEnd').addEventListener('click', humanEndTurn);
+  $('btnUndo').addEventListener('click', doUndo);
+  $('btnMenu').addEventListener('click', showMenu);
+  $('btnBuild').addEventListener('click', cycleBuild);
+  $('btnUnit').addEventListener('click', cycleUnit);
+  $('ghost').addEventListener('click', () => { sel.placing = null; setTargets([]); updateHud(); });
+  $('btnResume').addEventListener('click', () => { if (state) hideScreens(); else continueGame(); });
+  $('btnNew').addEventListener('click', showSetup);
+  $('btnRules').addEventListener('click', showRules);
+  $('btnRulesClose').addEventListener('click', () => { $('ovRules').classList.add('hidden'); if (!state) showMenu(); });
+  $('btnSetupBack').addEventListener('click', () => { if (state) hideScreens(); else showMenu(); });
+  $('btnStart').addEventListener('click', newGame);
+  $('btnEndNew').addEventListener('click', () => { $('ovEnd').classList.add('hidden'); showSetup(); });
+  $('btnWatch').addEventListener('click', () => { $('ovEnd').classList.add('hidden'); spectating = true; saveGame(); updateHud(); if (state && !state.gameOver && state.players[state.current].ai && !aiRunning) scheduleAI(0); });
+  $('selSpeed').addEventListener('change', () => { prefs.speed = $('selSpeed').value; savePrefs(); });
+  $('chkNum').addEventListener('change', () => { prefs.showNum = $('chkNum').checked; savePrefs(); requestRender(); });
+
+  /* ---------------- boot ---------------- */
+  loadPrefs();
+  applyStaticTexts();
+  layout();
+  if (loadGame()) showMenu(); else showSetup();
+  requestAnimationFrame(frame);
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { try { navigator.serviceWorker.register('sw.js').catch(() => { }); } catch (e) { } }
+
+  // testing hooks
+  window.slay = {
+    get state() { return state; }, E, AI,
+    newGameWith(o) { setup.players = Math.max(0, Math.min(6, (o.players || 4) - 2)); setup.size = Math.max(0, SIZE_KEYS.indexOf(o.size || 'medium')); setup.diff = Math.max(0, DIFF_KEYS.indexOf(o.aiLevel || 'normal')); setup.rules = Math.max(0, RULE_KEYS.indexOf(o.rules || 'antiyoy')); $('optSeed').value = o.seed == null ? '' : String(o.seed); newGame(); },
+    click(i) { onHexClick(i); }, buy(kind, s) { startPlacing(kind, s); }, endTurn: humanEndTurn, undo: doUndo, hexCenter,
+    get sel() { return sel; }, set speed(v) { prefs.speed = v; }, isAIRunning() { return aiRunning; }, get view() { return view; }, get geo() { return geo; },
+    showMenu, showSetup, cycleBuild, cycleUnit,
+  };
+})();
+
+</script>
+</body>
+</html>
